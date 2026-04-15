@@ -4,15 +4,15 @@
 
 #include <Arduino.h>
 #include "config.h"
-#include "drivers/matrix_driver.h"
 
+#include "core/app_manager.h"
+#include "core/ui.h"
+#include "drivers/matrix_driver.h"
 #include "apps/menu_app.h"
 #include "apps/splash_app.h"
-#include "core/app_manager.h"
-#include "core/draw.h"
 
-#include "ui/rod_box.h"
-#include "ui/fesucket.h"
+#include "img/rod_box.h"
+#include "img/fesucket.h"
 
 
 /*--- GLOBALS -----------------------------------------------------------------------------------*/

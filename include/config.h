@@ -51,8 +51,3 @@ static constexpr int INPUT_TX_PIN = -1;
 
 // Audio Buffer
 static constexpr size_t MAX_AUDIO_SAMPLES = 4096; // per channel, per frame
-
-// UI palette (RGB565)
-static constexpr uint16_t COLOR_BG          = 0x0000;
-static constexpr uint16_t COLOR_TEXT        = 0xFF9A;
-static constexpr uint16_t COLOR_TRANSPARENT = 0xF81F;

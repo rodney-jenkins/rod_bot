@@ -14,18 +14,18 @@
 
 /*--- CONSTANTS ---------------------------------------------------------------------------------*/
 
-#define UI_MENU_PIC_X         77
-#define UI_MENU_PIC_Y         12
-#define UI_MENU_PIC_WIDTH     48
-#define UI_MENU_PIC_HEIGHT    42
-#define UI_MENU_ROWS          2
-#define UI_MENU_COLS          3
-#define UI_MENU_SELECT_X      6
-#define UI_MENU_SELECT_Y      13
-#define UI_MENU_SELECT_X_OFST 25
-#define UI_MENU_SELECT_Y_OFST 20
-#define UI_MENU_LABEL_X       2
-#define UI_MENU_LABEL_Y       63
+#define UI_MENU_NUM_BUTTONS       4
+
+#define UI_MENU_BUTTON_WIDTH     62
+#define UI_MENU_BUTTON_HEIGHT     9
+#define UI_MENU_FIRST_BUTTON_X    5
+#define UI_MENU_FIRST_BUTTON_Y    7
+#define UI_MENU_BUTTON_Y_OFFSET  14
+
+#define UI_MENU_PIC_X            75
+#define UI_MENU_PIC_Y             8
+#define UI_MENU_PIC_WIDTH        50
+#define UI_MENU_PIC_HEIGHT       50
 
 
 /*--- CLASSES -----------------------------------------------------------------------------------*/
@@ -44,6 +44,9 @@ public:
     void   onResume() override;
     AppCmd update()   override;
     void   draw()     override;
+
+    AppCmd input_handler();
+    void   draw_menu( MatrixPanel_I2S_DMA * matrix );
     void   draw_pic( MatrixPanel_I2S_DMA * matrix );
 
 private:

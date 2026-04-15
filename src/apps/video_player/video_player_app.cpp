@@ -5,16 +5,17 @@
 #include <Arduino.h>
 #include <esp32-hal-psram.h>
 #include <SD_MMC.h>
-#include <Fonts/TomThumb.h>
 #include "config.h"
 #include "rod_format.h"
+
+#include "core/app_manager.h"
 #include "drivers/audio_driver.h"
 #include "drivers/matrix_driver.h"
 #include "drivers/input_driver.h"
-
-#include "core/app_manager.h"
 #include "apps/video_player/video_player_app.h"
 #include "apps/video_player/file_browser.h"
+
+#include <Fonts/TomThumb.h>
 
 
 /*--- GLOBALS -----------------------------------------------------------------------------------*/

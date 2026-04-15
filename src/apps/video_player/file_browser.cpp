@@ -3,23 +3,21 @@
 /*--- INCLUDES ----------------------------------------------------------------------------------*/
 
 #include <Arduino.h>
-// #include <algorithm.h>
 #include <SD_MMC.h>
-#include <Fonts/TomThumb.h>
-#include "apps/menu_app.h"
 #include "config.h"
-#include "drivers/audio_driver.h"
-#include "drivers/input_driver.h"
-#include "drivers/matrix_driver.h"
 
 #include "core/app_manager.h"
 #include "core/draw.h"
+#include "drivers/audio_driver.h"
+#include "drivers/input_driver.h"
+#include "drivers/matrix_driver.h"
+#include "apps/menu_app.h"
 #include "apps/video_player/file_browser.h"
 
-#include "ui/videos.h"
-#include "ui/video_item.h"
-#include "ui/folder_item.h"
-#include "ui/selector.h"
+#include "img/videos.h"
+#include "img/video_item.h"
+#include "img/folder_item.h"
+#include "img/selector.h"
 
 #include <Fonts/TomThumb.h>
 

@@ -4,9 +4,10 @@
 
 #include <Arduino.h>
 #include "config.h"
-#include "apps/snake_app.h"
+
 #include "drivers/input_driver.h"
 #include "drivers/matrix_driver.h"
+#include "apps/snake_app.h"
 
 #include <Fonts/TomThumb.h>
 
