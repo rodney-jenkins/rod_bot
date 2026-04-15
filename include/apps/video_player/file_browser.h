@@ -33,7 +33,7 @@ class FileBrowser : public IApp
 public:
     // `on_select` is called with the full SD path of the chosen file.
     // `on_cancel` is called if the user presses back.
-    explicit FileBrowser( std::function<void( const std::string & )> on_select, std::function<void()> on_cancel = nullptr );
+    explicit FileBrowser( std::function<void( const std::string & )> on_select, std::function<void()> on_cancel = nullptr, const std::string &start_path = "/" );
 
     void   onEnter()  override;
     AppCmd update()   override;
@@ -43,7 +43,13 @@ private:
     std::function<void( const std::string & )> _on_select;
     std::function<void()>                      _on_cancel;
 
-    std::vector<std::string> _files;   // paths of .rod files found on SD
+    struct Entry
+    {
+        std::string path;
+        bool is_dir;
+    };
+    std::vector<Entry> _entries;
+
     int16_t _selected = 0;
     int16_t _scroll   = 0;
     bool    _dirty    = true;
@@ -57,4 +63,6 @@ private:
     RodHeader   _preview_hdr{};
     std::string _preview_path;
     bool        _preview_valid = false;
+
+    std::string _cwd = "/";    // what directory is the file browser looking at?
 };

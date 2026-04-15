@@ -57,6 +57,7 @@ private:
     std::string _path;
     bool        _user_quit = false;
     bool        _is_running = false;
+    bool        _hud_drawn = false;
 
     void start_playback(const std::string &path);
     void stop_playback();
@@ -72,6 +73,8 @@ private:
     uint16_t _panel_w           = 0;
     uint16_t _panel_h           = 0;
     uint8_t  _channels          = 1;
+    uint16_t _fps_num           = 24;
+    uint16_t _fps_den           = 1;
 
     // Video frame pool
     static constexpr int VIDEO_POOL_DEPTH = 8;
@@ -84,6 +87,14 @@ private:
     TaskHandle_t       _readahead_handle = nullptr;
     std::atomic<bool>  _readahead_stop{false};  // written Core 1, read Core 0
     std::atomic<bool>  _readahead_done{false};  // written Core 0, read Core 1
+    uint32_t           _readahead_start_frame  = 0;  // frame index to begin from after a seek
 
     static void readahead_task( void *param );
+
+    // Seek support — only active when the .rod file contains a frame index table.
+    uint64_t  *_frame_offsets   = nullptr;  // PSRAM: frame_count absolute file offsets (uint64 for >4 GB files)
+    uint32_t   _current_frame   = 0;        // last frame index rendered by playback_tick()
+    uint32_t   _seek_step_frames = 120;     // frames per encoder tick, computed from fps
+
+    void seek_to_frame( uint32_t target );
 };

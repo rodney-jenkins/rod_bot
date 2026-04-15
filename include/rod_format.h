@@ -13,7 +13,7 @@
 static constexpr uint32_t ROD_MAGIC  = 0x524F4421; // "ROD!"
 static constexpr size_t   TITLE_LEN  = 32;
 static constexpr size_t   THUMB_LEN  = 2048;
-static constexpr size_t   HEADER_PAD = 2079;
+static constexpr size_t   HEADER_PAD = 2071;
 
 // .rod files support several different color formats
 enum PixelFormat : uint8_t 
@@ -40,11 +40,19 @@ struct __attribute__( (packed) ) RodHeader
     uint8_t  channels;        // 1 = mono, 2 = stereo
     uint8_t  pixel_format;    // see PixelFormat below
     uint32_t duration_ms;
+    uint64_t index_offset;         // byte offset of the frame index table; 0 = no index
     char     title[TITLE_LEN];
     uint8_t  thumbnail[THUMB_LEN]; // RGB565, 32×32
     uint8_t  _pad[HEADER_PAD];
 };
 static_assert( sizeof(RodHeader) == 4186, "RodHeader size mismatch" );
+
+// Frame index table (present when index_offset != 0): uint64_t[frame_count]
+// Each entry is the absolute byte offset of that frame's FrameHeader in the file.
+// uint64_t entries support files larger than 4 GB (e.g. 3-hour RGB565 ≈ 6 GB).
+// Enables O(1) random access for seeking.  Stored at the end of the file
+// by the encoder (after all frame data).  index_offset points to the first
+// entry; frame data occupies [sizeof(RodHeader), index_offset).
 
 // The .rod header per frame
 struct __attribute__( (packed) ) FrameHeader

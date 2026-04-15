@@ -40,13 +40,14 @@ static constexpr int SD_D2_PIN  = 38;
 static constexpr int SD_D3_PIN  = 40;
 
 // I2S Audio
+static constexpr int I2S_MCK_PIN  = 18;  // MCK
 static constexpr int I2S_BCK_PIN  = 21;  // BCLK
 static constexpr int I2S_WS_PIN   = 47;  // LRC
 static constexpr int I2S_DATA_PIN = 19;  // DIN
 
 // Serial from input controller
 static constexpr int INPUT_RX_PIN = 14;
-static constexpr int INPUT_TX_PIN = 18;
+static constexpr int INPUT_TX_PIN = -1;
 
 // Audio Buffer
 static constexpr size_t MAX_AUDIO_SAMPLES = 4096; // per channel, per frame

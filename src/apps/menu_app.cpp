@@ -10,8 +10,8 @@
 #include "core/app_manager.h"
 #include "core/draw.h"
 #include "apps/menu_app.h"
-#include "apps/splash_app.h"  // remove
 #include "apps/video_player/video_player_app.h"
+#include "apps/snake_app.h"
 // #include "apps/settings_app.h"    ← add future apps here
 
 #include "ui/menu.h"
@@ -33,7 +33,7 @@ const MenuItem MenuApp::_items[] =
 {
     { "Video Player", []() -> IApp * { return new VideoPlayerApp(); } },
     { "Photos",       []() -> IApp * { return new VideoPlayerApp(); } },
-    { "Alarm Clock",  []() -> IApp * { return new VideoPlayerApp(); } },
+    { "Snake",        []() -> IApp * { return new SnakeApp();       } },
     { "Chat",         []() -> IApp * { return new VideoPlayerApp(); } },
 };
 const int MenuApp::_item_count = sizeof( _items ) / sizeof( _items[0] );
