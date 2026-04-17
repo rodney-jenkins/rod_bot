@@ -23,21 +23,15 @@ void draw_rect( MatrixPanel_I2S_DMA *matrix, uint16_t color, uint16_t x_ofst, ui
 
 void draw_rect_unfilled( MatrixPanel_I2S_DMA *matrix, uint16_t color, uint16_t x_ofst, uint16_t y_ofst, uint16_t width, uint16_t height )
 {
-    for( int y = 0; y < height; y++ )
+    for( int y = 0; y < height; y++ ) 
     {
         matrix->drawPixel( x_ofst, y + y_ofst, color );
-    }
-    for( int y = 0; y < height; y++ )
-    {
-        matrix->drawPixel( x_ofst + width, y + y_ofst, color );
+        matrix->drawPixel( x_ofst + width - 1, y + y_ofst, color );
     }
     for( int x = 0; x < width; x++ )
     {
         matrix->drawPixel( x + x_ofst, y_ofst, color );
-    }
-    for( int x = 0; x < width; x++ )
-    {
-        matrix->drawPixel( x + x_ofst, y_ofst + height, color );
+        matrix->drawPixel( x + x_ofst, y_ofst + height - 1, color );
     }
 }
 

@@ -7,7 +7,7 @@
 #include "config.h"
 
 #include "core/app_manager.h"
-#include "core/draw.h"
+#include "core/ui.h"
 #include "drivers/audio_driver.h"
 #include "drivers/input_driver.h"
 #include "drivers/matrix_driver.h"

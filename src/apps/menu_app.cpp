@@ -38,7 +38,7 @@ const int MenuApp::_item_count = sizeof( _items ) / sizeof( _items[0] );
 
 /*--- HELPERS -----------------------------------------------------------------------------------*/
 
-void MenuApp::input_handler()
+AppCmd MenuApp::input_handler()
 {
     while( input_has_event() )
     {
@@ -73,15 +73,16 @@ void MenuApp::input_handler()
                 return AppCmd::NONE;
         }
     }
+    return AppCmd::NONE;
 }
 
 void MenuApp::draw_menu( MatrixPanel_I2S_DMA * matrix )
 {
     int x, y;
 
-    // p->setFont( &TomThumb );
-    p->setTextSize( 1 );
-    p->setTextColor( COLOR_TEXT );
+    matrix->setFont( nullptr );
+    matrix->setTextSize( 1 );
+    matrix->setTextColor( COLOR_TEXT );
 
     for( int i = 0; i < UI_MENU_NUM_BUTTONS; i++ )
     {
@@ -90,8 +91,8 @@ void MenuApp::draw_menu( MatrixPanel_I2S_DMA * matrix )
 
         draw_rect_unfilled( matrix, COLOR_UI_ACCENT, x - 1, y - 1, UI_MENU_BUTTON_WIDTH + 2, UI_MENU_BUTTON_HEIGHT + 2 );
         draw_rect( matrix, COLOR_UI_MAIN, x, y, UI_MENU_BUTTON_WIDTH, UI_MENU_BUTTON_HEIGHT );
-        p->setCursor( x + 1, y + 1 );
-        p->print( _items[_selected].label );
+        matrix->setCursor( x + 1, y + 1 );
+        matrix->print( _items[i].label );
     }
 }
 
