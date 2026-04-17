@@ -14,11 +14,6 @@
 #include "apps/menu_app.h"
 #include "apps/video_player/file_browser.h"
 
-#include "img/videos.h"
-#include "img/video_item.h"
-#include "img/folder_item.h"
-#include "img/selector.h"
-
 #include <Fonts/TomThumb.h>
 
 
@@ -266,7 +261,8 @@ void FileBrowser::draw()
     // Draw background --------------------------------------------------------
     // TODO: these should all be constants...
     // Title box
-    draw_rect( p, COLOR_UI_ACCENT, 0, 56, PANEL_WIDTH, 1 );
+    draw_rect( p, COLOR_UI_ACCENT, 0, 56, PANEL_W, 1 );
+    draw_rect( p, COLOR_UI_SECONDARY, 0, 57, PANEL_W, 7 );
     // List box
     draw_rect( p, COLOR_UI_ACCENT, 0, 0, 1, 57 );
     draw_rect( p, COLOR_UI_ACCENT, 0, 0, 92, 1 );
@@ -295,30 +291,30 @@ void FileBrowser::draw()
     bool can_scroll_down = ( _scroll + VISIBLE_ROWS < (int)_entries.size() );
 
     p->setFont( &TomThumb );
-    p->setTextColor( COLOR_TEXT )
+    p->setTextColor( COLOR_TEXT );
 
     // Draw buttons
     for( int i = 0; i < VISIBLE_ROWS && i < _entries.size(); i++ )
     {
         int idx = _scroll + i; // Compute actual index in _entries
-        bool sel = ( idx == _selected );
+        
         const Entry &e = _entries[idx];
 
         // Handle scroll indicators
         if( i == 0 && can_scroll_up )
         {
-            draw_rect_unfilled( p, UI_COLOR_ACCENT, 0, i * 9, 93, 9 );
-            draw_rect( p, UI_COLOR_NOTICE, 1, 1 + i * 9, 91, 7 );
-            p->setCursor( 2, 2 );
+            draw_rect_unfilled( p, COLOR_UI_ACCENT, 0, i * 8, 93, 9 );
+            draw_rect( p, COLOR_UI_NOTICE, 1, 1 + i * 8, 91, 7 );
+            p->setCursor( 2, 2 + 5 );
             p->print( "^^^" );
             continue;
         }
 
         if( i == VISIBLE_ROWS - 1 && can_scroll_down )
         {
-            draw_rect_unfilled( p, UI_COLOR_ACCENT, 0, i * 9, 93, 9 );
-            draw_rect( p, UI_COLOR_NOTICE, 1, 1 + i * 9, 91, 7 );
-            p->setCursor( 2, 2 + i * 9 );
+            draw_rect_unfilled( p, COLOR_UI_ACCENT, 0, i * 8, 93, 9 );
+            draw_rect( p, COLOR_UI_NOTICE, 1, 1 + i * 8, 91, 7 );
+            p->setCursor( 2, 2 + i * 8 + 5 );
             p->print( "vvv" );
             continue;
         }
@@ -329,38 +325,37 @@ void FileBrowser::draw()
         if( idx < 0 || idx >= (int)_entries.size() )
             continue;
 
-        if( sel )
-            draw_rect_unfilled( p, UI_COLOR_TEXT, 0, i * 9, 93, 9 );
-        else
-            draw_rect_unfilled( p, UI_COLOR_ACCENT, 0, i * 9, 93, 9 );
+        draw_rect_unfilled( p, COLOR_UI_ACCENT, 0, i * 8, 93, 9 );
 
         if( e.is_dir )
-            draw_rect( p, UI_COLOR_TERTIARY, 1, 1 + i * 9, 91, 7 );
+            draw_rect( p, COLOR_UI_TERTIARY, 1, 1 + i * 8, 91, 7 );
         else
-            draw_rect( p, UI_COLOR_MAIN, 1, 1 + i * 9, 91, 7 );
+            draw_rect( p, COLOR_UI_MAIN, 1, 1 + i * 8, 91, 7 );
 
         int x = 2;
-        int y = 2 + i * 9;
-        p->setCursor( x, y );
+        int y = 2 + i * 8;
+        p->setCursor( x, y + 5 );
 
         char name[ 22 ];
         if( e.path == ".." )
         {
-            strncpy( name, "..", sizeof(name) );
+            strncpy( name, "back", sizeof(name) );
         }
         else
         {
-            strcpy( name, basename( e.path ), 21 );
+            strncpy( name, basename( e.path ), 21 );
         }
         name[ 21 ] = '\0';
         p->print( name );
     }
 
+    draw_rect_unfilled( p, COLOR_TEXT, 0, _selected * 8, 93, 9 );
+
     // Metadata
     {
         p->setFont( &TomThumb );
         p->setTextColor( COLOR_TEXT );
-        p->setCursor( 1, 58 );
+        p->setCursor( 95, 43 );
         
         if( _entries[ _selected ].is_dir )
         {
@@ -399,7 +394,7 @@ void FileBrowser::draw()
             strncpy( title, basename( _preview_path ), 29 );
         }
         title[29] = '\0';
-        p->setCursor( 1, 58 );
+        p->setCursor( 1, 63 );
         p->print( title );
     }
     
