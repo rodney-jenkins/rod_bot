@@ -12,11 +12,14 @@
 /*--- CONSTANTS ---------------------------------------------------------------------------------*/
 
 // UI palette (RGB565)
-static constexpr uint16_t COLOR_BG          = 0x0000;     // black
-static constexpr uint16_t COLOR_UI_MAIN     = 0x3368;     // forest green
-static constexpr uint16_t COLOR_UI_ACCENT   = 0xBA80;     // burnt orange
-static constexpr uint16_t COLOR_TEXT        = 0xFFDA;     // cream
-static constexpr uint16_t COLOR_TRANSPARENT = 0xF81F;     // magenta
+static constexpr uint16_t COLOR_BG           = 0x0000;     // black
+static constexpr uint16_t COLOR_UI_MAIN      = 0x3368;     // forest green
+static constexpr uint16_t COLOR_UI_SECONDARY = 0x2286;     // dark green
+static constexpr uint16_t COLOR_UI_TERTIARY  = 0x6006;     // burgundy
+static constexpr uint16_t COLOR_UI_NOTICE    = 0xfda0;     // yellow gold
+static constexpr uint16_t COLOR_UI_ACCENT    = 0xBA80;     // burnt orange
+static constexpr uint16_t COLOR_TEXT         = 0xFFDA;     // cream
+static constexpr uint16_t COLOR_TRANSPARENT  = 0xF81F;     // magenta
 
 
 /*--- FUNCTIONS ---------------------------------------------------------------------------------*/

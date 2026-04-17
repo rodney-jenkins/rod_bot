@@ -54,7 +54,7 @@ private:
     int16_t _scroll   = 0;
     bool    _dirty    = true;
 
-    static constexpr int VISIBLE_ROWS = 3;
+    static constexpr int VISIBLE_ROWS = 7;
 
     void scan_sd();
     void load_preview();

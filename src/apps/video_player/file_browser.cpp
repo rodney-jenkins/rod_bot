@@ -263,80 +263,106 @@ void FileBrowser::draw()
     MatrixPanel_I2S_DMA *p = matrix_panel();
     p->clearScreen();
 
-    // Draw background
-    draw_png( p, UI_VIDEOS, 0, 0, UI_VIDEOS_WIDTH, UI_VIDEOS_HEIGHT );
+    // Draw background --------------------------------------------------------
+    // TODO: these should all be constants...
+    // Title box
+    draw_rect( p, COLOR_UI_ACCENT, 0, 56, PANEL_WIDTH, 1 );
+    // List box
+    draw_rect( p, COLOR_UI_ACCENT, 0, 0, 1, 57 );
+    draw_rect( p, COLOR_UI_ACCENT, 0, 0, 92, 1 );
+    // Thumbnail box
+    draw_rect_unfilled( p, COLOR_UI_ACCENT, 92, 0, 36, 36 );
+    draw_rect_unfilled( p, COLOR_UI_ACCENT, 93, 1, 34, 34 );
+    // Meta box
+    draw_rect_unfilled( p, COLOR_UI_ACCENT, 92, 34, 36, 22 );
+    draw_rect_unfilled( p, COLOR_UI_ACCENT, 93, 35, 34, 20 );
 
-    // Draw title
-    p->setFont( nullptr );
-    p->setTextSize( 1 );
-    p->setTextColor( COLOR_TEXT );
-    p->setCursor( 2, 1 );
-    p->print( "Videos" );
 
-    // Draw file list
+    // Draw file list ---------------------------------------------------------
+
     if( _entries.empty() )
     {
         p->setFont( nullptr );
         p->setTextColor( COLOR_TEXT );
-        p->setCursor( 2, 32 );
+        p->setCursor( 5, 5 );
         p->print( "No .rod files" );
+        p->setCursor( 20, 5 );
+        p->print( ":(" );
         return;
     }
 
+    bool can_scroll_up   = ( _scroll > 0 );
+    bool can_scroll_down = ( _scroll + VISIBLE_ROWS < (int)_entries.size() );
+
+    p->setFont( &TomThumb );
+    p->setTextColor( COLOR_TEXT )
+
     // Draw buttons
-    for( int i = 0; i < 3 && i < _entries.size(); i++ )
+    for( int i = 0; i < VISIBLE_ROWS && i < _entries.size(); i++ )
     {
-        const Entry &e = _entries[_scroll + i];
-        if( e.is_dir )
-            draw_png( p, UI_FOLDER_ITEM, UI_BUTTON_X, UI_BUTTON_Y + i * UI_BUTTON_Y_OFST, UI_VIDEO_ITEM_WIDTH, UI_VIDEO_ITEM_HEIGHT );
-        else
-            draw_png( p, UI_VIDEO_ITEM,  UI_BUTTON_X, UI_BUTTON_Y + i * UI_BUTTON_Y_OFST, UI_VIDEO_ITEM_WIDTH, UI_VIDEO_ITEM_HEIGHT );
-    }
-
-    // Fill button names
-    for( int i = 0; i < VISIBLE_ROWS; i++ )
-    {
-        int  idx = _scroll + i;
-        if( idx >= (int)_entries.size() )
-        {
-            break;
-        }
-        int  y   = UI_BUTTON_Y + i * UI_BUTTON_Y_OFST;
+        int idx = _scroll + i; // Compute actual index in _entries
         bool sel = ( idx == _selected );
-
         const Entry &e = _entries[idx];
 
-        if( sel )
+        // Handle scroll indicators
+        if( i == 0 && can_scroll_up )
         {
-            draw_png( p, UI_SELECTOR, UI_BUTTON_X - 1, y - 1, UI_SELECTOR_WIDTH, UI_SELECTOR_HEIGHT );
+            draw_rect_unfilled( p, UI_COLOR_ACCENT, 0, i * 9, 93, 9 );
+            draw_rect( p, UI_COLOR_NOTICE, 1, 1 + i * 9, 91, 7 );
+            p->setCursor( 2, 2 );
+            p->print( "^^^" );
+            continue;
         }
 
-        p->setFont( nullptr );
-        p->setTextColor( COLOR_TEXT );
-        p->setCursor( UI_BUTTON_X + 2, y + 2 );  // baseline = row_top + ascent(8)
+        if( i == VISIBLE_ROWS - 1 && can_scroll_down )
+        {
+            draw_rect_unfilled( p, UI_COLOR_ACCENT, 0, i * 9, 93, 9 );
+            draw_rect( p, UI_COLOR_NOTICE, 1, 1 + i * 9, 91, 7 );
+            p->setCursor( 2, 2 + i * 9 );
+            p->print( "vvv" );
+            continue;
+        }
 
-        char name[ 11 ];
+        if( can_scroll_up )
+            idx -= 1;  // shift down because row 0 is taken
+
+        if( idx < 0 || idx >= (int)_entries.size() )
+            continue;
+
+        if( sel )
+            draw_rect_unfilled( p, UI_COLOR_TEXT, 0, i * 9, 93, 9 );
+        else
+            draw_rect_unfilled( p, UI_COLOR_ACCENT, 0, i * 9, 93, 9 );
+
+        if( e.is_dir )
+            draw_rect( p, UI_COLOR_TERTIARY, 1, 1 + i * 9, 91, 7 );
+        else
+            draw_rect( p, UI_COLOR_MAIN, 1, 1 + i * 9, 91, 7 );
+
+        int x = 2;
+        int y = 2 + i * 9;
+        p->setCursor( x, y );
+
+        char name[ 22 ];
         if( e.path == ".." )
         {
             strncpy( name, "..", sizeof(name) );
         }
         else
         {
-            strncpy( name, basename(e.path), 10 );
+            strcpy( name, basename( e.path ), 21 );
         }
-        name[10] = '\0';
+        name[ 21 ] = '\0';
         p->print( name );
     }
-
-    // Arrows: TODO
 
     // Metadata
     {
         p->setFont( &TomThumb );
         p->setTextColor( COLOR_TEXT );
-        p->setCursor( METADATA_X, METADATA_Y );
+        p->setCursor( 1, 58 );
         
-        if( _entries[_selected].is_dir )
+        if( _entries[ _selected ].is_dir )
         {
             p->print( "Folder" );
             if( !_preview_valid ) return;
@@ -350,18 +376,18 @@ void FileBrowser::draw()
             }
 
             uint32_t total_s = _preview_hdr.duration_ms / 1000;
-            uint32_t mins    = total_s / 60;
+            uint32_t hrs     = ( total_s / 3600 );
+            uint32_t mins    = ( total_s % 3600 ) / 60;
             uint32_t secs    = total_s % 60;
-            uint16_t fps = ( _preview_hdr.fps_den > 0 ) ? _preview_hdr.fps_num / _preview_hdr.fps_den : 0;
 
-            char buf[ 11 ];
-            snprintf( buf, sizeof(buf), "%u:%02u %ufps", mins, secs, fps );
+            char buf[ 8 ];
+            snprintf( buf, sizeof(buf), "%u:%02u:%02u", hrs, mins, secs );
             p->print( buf );
         }
     }
 
     // Title (files only)
-    if( !_entries[_selected].is_dir )
+    if( !_entries[ _selected ].is_dir )
     {
         char title[30];
         if( _preview_hdr.title[0] != '\0' )
@@ -373,7 +399,7 @@ void FileBrowser::draw()
             strncpy( title, basename( _preview_path ), 29 );
         }
         title[29] = '\0';
-        p->setCursor( NAME_X, NAME_Y );
+        p->setCursor( 1, 58 );
         p->print( title );
     }
     
@@ -385,7 +411,7 @@ void FileBrowser::draw()
         {
             int      si    = ( ty * 32 + tx ) * 2;
             uint16_t color = (uint16_t)thumb[si] | ( (uint16_t)thumb[si + 1] << 8 );
-            p->drawPixel( THUMBNAIL_X + tx, THUMBNAIL_Y + ty, color );
+            p->drawPixel( 94 + tx, 2 + ty, color );
         }
     }
 }
