@@ -294,11 +294,10 @@ void FileBrowser::draw()
     p->setTextColor( COLOR_TEXT );
 
     // Draw buttons
-    for( int i = 0; i < VISIBLE_ROWS && i < _entries.size(); i++ )
+    for( int i = 0; i < VISIBLE_ROWS; i++ )
     {
-        int idx = _scroll + i; // Compute actual index in _entries
+        int display_offset = can_scroll_up ? 1 : 0;
         
-        const Entry &e = _entries[idx];
 
         // Handle scroll indicators
         if( i == 0 && can_scroll_up )
@@ -319,11 +318,12 @@ void FileBrowser::draw()
             continue;
         }
 
-        if( can_scroll_up )
-            idx -= 1;  // shift down because row 0 is taken
+        int idx = _scroll + i - display_offset; // Compute actual index in _entries
 
         if( idx < 0 || idx >= (int)_entries.size() )
             continue;
+
+        const Entry &e = _entries[idx];
 
         draw_rect_unfilled( p, COLOR_UI_ACCENT, 0, i * 8, 93, 9 );
 
