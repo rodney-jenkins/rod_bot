@@ -5,12 +5,14 @@
 #include <Arduino.h>
 #include <SD_MMC.h>
 #include <esp_random.h>
+#include <HTTPClient.h>
 #include "config.h"
+
+#include "core/app_manager.h"
+#include "core/wifi.h"
 #include "drivers/audio_driver.h"
 #include "drivers/input_driver.h"
 #include "drivers/matrix_driver.h"
-
-#include "core/app_manager.h"
 #include "apps/splash_app.h"
 
 
@@ -66,6 +68,8 @@ void setup()
     Serial.print( "[boot] Entering main loop.\r\n" );
 
     randomSeed( esp_random() );  // seed with true RNG
+
+    WiFi.connect( SSID, PASSWORD );
 }
 
 

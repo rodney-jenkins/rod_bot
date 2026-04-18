@@ -79,7 +79,7 @@ void SplashApp::draw()
     {
         p->clearScreen();  // wipe first image
 
-        draw_png( p, UI_FESUCKET, 0, 0, UI_FESUCKET_WIDTH, UI_FESUCKET_HEIGHT );
+        // draw_png( p, UI_FESUCKET, 0, 0, UI_FESUCKET_WIDTH, UI_FESUCKET_HEIGHT );
 
         second_draw_done = true;
     }

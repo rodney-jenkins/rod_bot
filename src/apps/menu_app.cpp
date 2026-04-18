@@ -15,6 +15,7 @@
 
 #include "img/fes0.h"
 #include "img/buck0.h"
+#include "img/rod0.h"
 
 #include <Fonts/TomThumb.h>
 
@@ -29,7 +30,7 @@ extern AppManager g_app_manager;
 const MenuItem MenuApp::_items[] =
 {
     { "Movie",        []() -> IApp * { return new VideoPlayerApp(); } },
-    { "Frame",        []() -> IApp * { return new VideoPlayerApp(); } },
+    { "Frame",        []() -> IApp * { return new FrameApp(); } },
     { "Music",        []() -> IApp * { return new VideoPlayerApp(); } },
     { "Snake",        []() -> IApp * { return new SnakeApp();       } },
 };
@@ -101,11 +102,13 @@ void MenuApp::draw_pic( MatrixPanel_I2S_DMA * matrix )
     switch( _pic )
     {
         case( 0 ): // FES0
-            draw_png( matrix, UI_FES0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+            draw_png( matrix, UI_ROD0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+            // draw_png( matrix, UI_FES0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
             break;
         
         case( 1 ): // BUCK0
-            draw_png( matrix, UI_BUCK0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+            draw_png( matrix, UI_ROD0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+            // draw_png( matrix, UI_BUCK0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
             break;
         
         default:
