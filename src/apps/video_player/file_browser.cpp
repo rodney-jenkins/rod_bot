@@ -282,7 +282,7 @@ void FileBrowser::draw()
         p->setTextColor( COLOR_TEXT );
         p->setCursor( 5, 5 );
         p->print( "No .rod files" );
-        p->setCursor( 20, 5 );
+        p->setCursor( 5, 20 );
         p->print( ":(" );
         return;
     }

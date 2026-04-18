@@ -57,7 +57,7 @@ void matrix_init()
 
     s_panel = new MatrixPanel_I2S_DMA( cfg );
     s_panel->begin();
-    s_panel->setBrightness8( 255 );  // ~50% — comfortable default; adjust as needed
+    s_panel->setBrightness8( 64 );  // ~50% — comfortable default; adjust as needed
     s_panel->clearScreen();
 }
 
