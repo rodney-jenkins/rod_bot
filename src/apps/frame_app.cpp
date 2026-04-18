@@ -11,11 +11,14 @@
 #include "core/wifi.h"
 #include "drivers/matrix_driver.h"
 #include "drivers/input_driver.h"
+#include "apps/frame_app.h"
 
 
 /*--- GLOBALS -----------------------------------------------------------------------------------*/
 
 extern AppManager g_app_manager;
+
+uint8_t* s_image_buffer = nullptr;
 
 
 /*--- CONSTANTS ---------------------------------------------------------------------------------*/
@@ -28,7 +31,7 @@ static unsigned long s_last_fetch = 0;
 
 /*--- HELPERS -----------------------------------------------------------------------------------*/
 
-AppCmd MenuApp::input_handler()
+AppCmd FrameApp::input_handler()
 {
     while( input_has_event() )
     {
@@ -51,9 +54,10 @@ AppCmd MenuApp::input_handler()
     return AppCmd::NONE;
 }
 
-void fetch_and_display_image()
+void FrameApp::fetch_and_display_image()
 {
     HTTPClient http;
+
     http.begin( SRVR_IMAGE_CMD );
 
     int response = http.GET();
@@ -70,7 +74,7 @@ void fetch_and_display_image()
             if( available > 0 )
             {
                 int toRead = min( available, IMAGE_SIZE - bytesRead );
-                int read = stream->readBytes( &imageBuffer[bytesRead], toRead );
+                int read = stream->readBytes( &s_image_buffer[bytesRead], toRead );
                 bytesRead += read;
             }
         }
@@ -79,7 +83,7 @@ void fetch_and_display_image()
         {
             // Render using your matrix function
             matrix_render_frame(
-                imageBuffer,
+                s_image_buffer,
                 PANEL_W,
                 PANEL_H,
                 PIXFMT_RGB565
@@ -99,24 +103,35 @@ void fetch_and_display_image()
 
 /*--- APP OVERRIDES -----------------------------------------------------------------------------*/
 
-void MenuApp::onEnter()
+void FrameApp::onEnter()
 {
     matrix_clear();
+
+    if( !s_image_buffer )
+    {
+        s_image_buffer = (uint8_t*)malloc( IMAGE_SIZE );
+    }
 }
 
-void MenuApp::onResume()
+void FrameApp::onExit()
 {
     matrix_clear();
+
+    if( s_image_buffer )
+    {
+        free( s_image_buffer );
+        s_image_buffer = nullptr;
+    }
 }
 
-AppCmd MenuApp::update() 
+AppCmd FrameApp::update() 
 {
     AppCmd cmd = input_handler();
 
     return cmd;
 }
 
-void MenuApp::draw()
+void FrameApp::draw()
 {   
     unsigned long now = millis();
 

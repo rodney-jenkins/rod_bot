@@ -9,6 +9,7 @@
 #include "core/ui.h"
 #include "drivers/matrix_driver.h"
 #include "drivers/input_driver.h"
+#include "apps/frame_app.h"
 #include "apps/menu_app.h"
 #include "apps/video_player/video_player_app.h"
 #include "apps/snake_app.h"

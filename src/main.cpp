@@ -69,7 +69,7 @@ void setup()
 
     randomSeed( esp_random() );  // seed with true RNG
 
-    WiFi.connect( SSID, PASSWORD );
+    WiFi.begin( SSID, PASSWORD );
 }
 
 
