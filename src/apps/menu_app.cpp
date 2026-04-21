@@ -64,7 +64,7 @@ AppCmd MenuApp::input_handler()
 
             case( InputEvent::BTN_B ):
                 Serial.print( "[menu] Button B Press\r\n" );
-                _selected = max((int)_selected - 1, 0);
+                _selected = max( (int)_selected - 1, 0 );
                 _dirty = true;
                 return AppCmd::NONE;
 
