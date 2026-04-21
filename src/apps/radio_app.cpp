@@ -5,12 +5,15 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include <driver/i2s.h>
 #include "config.h"
 
 #include "core/app_manager.h"
 #include "core/ui.h"
 #include "core/wifi.h"
+#include "drivers/audio_driver.h"
 #include "drivers/input_driver.h"
+#include "apps/radio_app.h"
 
 
 /*--- GLOBALS -----------------------------------------------------------------------------------*/
@@ -80,7 +83,7 @@ void getPlaylists()
 {
     HTTPClient http;
 
-    http.begin( SRVR_PLAYLIST_CMD );
+    http.begin( SRVR_PLAYLISTS_CMD );
   
     int httpResponseCode = http.GET();
     if( httpResponseCode == 200 )
@@ -100,52 +103,13 @@ void startPlaylist( const char *playlistId )
   
     int httpResponseCode = http.POST( nullptr, 0 );
 
-    if( code == 200 )
+    if( httpResponseCode == 200 )
     {
         Serial.println( "[radio] Playlist started" );
     }
     else
     {
-        Serial.printf( "[radio] Failed to start playlist: %d\n", code );
-    }
-
-    http.end();
-}
-
-void streamMusic( const char *playlistId )
-{
-    HTTPClient http;
-    String url = SRVR_STREAM_PLAYLIST_CMD;
-    url += String( playlistId );
-    http.begin( url );
-  
-    int httpResponseCode = http.GET();
-    if( httpResponseCode == 200 )
-    {
-        WiFiClient *stream = http.getStreamPtr();
-    
-        // Buffer for audio data
-        uint8_t buffer[512];
-        int bytesRead = 0;
-    
-        while( http.connected() && stream->available() )
-        {
-            int available = stream->available();
-            int toRead = min( 512, available );
-            bytesRead = stream->readBytes( buffer, toRead );
-      
-            if( bytesRead > 0 )
-            {
-                // Write to I2S for audio playback
-                I2S.write( buffer, bytesRead );
-            }
-        }
-    
-        Serial.println( "Stream ended (all tracks in rotation completed)" );
-    } 
-    else 
-    {
-        Serial.println("Failed to start stream: " + String(httpResponseCode));
+        Serial.printf( "[radio] Failed to start playlist: %d\n", httpResponseCode );
     }
 
     http.end();
@@ -175,7 +139,7 @@ static void radio_task(void *param)
         Serial.printf( "[radio] Stream failed: %d\n", code );
         http.end();
         free( playlistId );
-        running = false;
+        s_running = false;
         vTaskDelete( nullptr );
         return;
     }
@@ -185,7 +149,7 @@ static void radio_task(void *param)
     uint8_t buffer[1024];
 
     // Step 3: Stream loop
-    while( running && http.connected() )
+    while( s_running && http.connected() )
     {
         int available = stream->available();
 
@@ -213,7 +177,7 @@ static void radio_task(void *param)
     http.end();
     free( playlistId );
 
-    running = false;
+    s_running = false;
     vTaskDelete( nullptr );
 }
 
@@ -225,8 +189,9 @@ void RadioApp::onEnter()
 
     matrix_clear();
     _dirty = true;
-
+    
     // Start radio once when entering app
+    audio_init( 44100, 2 );
     radio_start( "3XvZuHnRyeys1UU9bh7Qyq" );
 }
 

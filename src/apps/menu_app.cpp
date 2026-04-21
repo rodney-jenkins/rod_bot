@@ -11,6 +11,7 @@
 #include "drivers/input_driver.h"
 #include "apps/frame_app.h"
 #include "apps/menu_app.h"
+#include "apps/radio_app.h"
 #include "apps/video_player/video_player_app.h"
 #include "apps/snake_app.h"
 
@@ -32,7 +33,7 @@ const MenuItem MenuApp::_items[] =
 {
     { "Movie",        []() -> IApp * { return new VideoPlayerApp(); } },
     { "Frame",        []() -> IApp * { return new FrameApp(); } },
-    { "Music",        []() -> IApp * { return new VideoPlayerApp(); } },
+    { "Music",        []() -> IApp * { return new RadioApp(); } },
     { "Snake",        []() -> IApp * { return new SnakeApp();       } },
 };
 const int MenuApp::_item_count = sizeof( _items ) / sizeof( _items[0] );
