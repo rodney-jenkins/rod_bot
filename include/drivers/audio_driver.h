@@ -49,3 +49,9 @@ void audio_resume();
 // Must only be called while audio is paused (audio_pause() has been called),
 // so the drain task is sleeping and not blocked on the stream buffer.
 void audio_set_playback_position( uint64_t sample_offset );
+
+// Set playback volume.  0 = silent, 255 = full scale.
+void audio_set_volume( uint8_t vol );
+
+// Get current volume (0-255).
+uint8_t audio_get_volume();

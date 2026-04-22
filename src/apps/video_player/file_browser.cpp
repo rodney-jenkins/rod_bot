@@ -54,8 +54,7 @@ void FileBrowser::scan_sd()
         std::string name = entry.name();
 
         // Skip system/hidden entries
-        if( name == "System Volume Information" || name == "$RECYCLE.BIN" || name == "._" || name[0] == '.')   // hidden files like .DS_Store
-        {
+        if( name == "System Volume Information" || name == "$RECYCLE.BIN" || name == "._" || name[0] == '.')   // hidden files like .DS_Store            || name == "music" )  // reserved for radio app        {
             entry.close();
             continue;
         }
@@ -178,9 +177,18 @@ AppCmd FileBrowser::update()
             case( InputEvent::BTN_C ):
                 Serial.print( "[fb] Button C Press\r\n" );
                 _selected = min( (int)_selected + 1, (int)_entries.size() - 1 );
-                if( _selected >= _scroll + VISIBLE_ROWS )
+                // Adjust scroll to keep _selected visible, accounting for scroll indicators
+                for( int pass = 0; pass < 2; pass++ )
                 {
-                    _scroll = _selected - VISIBLE_ROWS + 1;
+                    bool has_up   = ( _scroll > 0 );
+                    int  capacity = VISIBLE_ROWS - ( has_up ? 1 : 0 );
+                    bool has_down = ( (int)_entries.size() - _scroll > capacity );
+                    if( has_down ) capacity--;
+                    if( _selected >= _scroll + capacity )
+                    {
+                        _scroll = _selected - capacity + 1;
+                        if( _scroll < 0 ) _scroll = 0;
+                    }
                 }
                 _dirty = true;
                 break;
@@ -259,19 +267,18 @@ void FileBrowser::draw()
     p->clearScreen();
 
     // Draw background --------------------------------------------------------
-    // TODO: these should all be constants...
     // Title box
-    draw_rect( p, COLOR_UI_ACCENT, 0, 56, PANEL_W, 1 );
-    draw_rect( p, COLOR_UI_SECONDARY, 0, 57, PANEL_W, 7 );
+    draw_rect( p, COLOR_UI_ACCENT, LIST_LEFT, TITLE_BOX_Y, PANEL_W, TITLE_BOX_TOP_HEIGHT );
+    draw_rect( p, COLOR_UI_SECONDARY, LIST_LEFT, LIST_BORDER_Y, PANEL_W, TITLE_BOX_HEIGHT );
     // List box
-    draw_rect( p, COLOR_UI_ACCENT, 0, 0, 1, 57 );
-    draw_rect( p, COLOR_UI_ACCENT, 0, 0, 92, 1 );
+    draw_rect( p, COLOR_UI_ACCENT, LIST_LEFT, LIST_TOP, LIST_BORDER_WIDTH, LIST_BORDER_Y );
+    draw_rect( p, COLOR_UI_ACCENT, LIST_LEFT, LIST_TOP, THUMBNAIL_BOX_X, LIST_BORDER_WIDTH );
     // Thumbnail box
-    draw_rect_unfilled( p, COLOR_UI_ACCENT, 92, 0, 36, 36 );
-    draw_rect_unfilled( p, COLOR_UI_ACCENT, 93, 1, 34, 34 );
+    draw_rect_unfilled( p, COLOR_UI_ACCENT, THUMBNAIL_BOX_X, THUMBNAIL_BOX_Y, THUMBNAIL_BOX_WIDTH, THUMBNAIL_BOX_HEIGHT );
+    draw_rect_unfilled( p, COLOR_UI_ACCENT, THUMBNAIL_INNER_X, THUMBNAIL_INNER_Y, THUMBNAIL_INNER_WIDTH, THUMBNAIL_INNER_HEIGHT );
     // Meta box
-    draw_rect_unfilled( p, COLOR_UI_ACCENT, 92, 34, 36, 22 );
-    draw_rect_unfilled( p, COLOR_UI_ACCENT, 93, 35, 34, 20 );
+    draw_rect_unfilled( p, COLOR_UI_ACCENT, METADATA_BOX_X, METADATA_BOX_Y, METADATA_BOX_WIDTH, METADATA_BOX_HEIGHT );
+    draw_rect_unfilled( p, COLOR_UI_ACCENT, METADATA_INNER_X, METADATA_INNER_Y, METADATA_INNER_WIDTH, METADATA_INNER_HEIGHT );
 
 
     // Draw file list ---------------------------------------------------------
@@ -280,18 +287,22 @@ void FileBrowser::draw()
     {
         p->setFont( nullptr );
         p->setTextColor( COLOR_TEXT );
-        p->setCursor( 5, 5 );
+        p->setCursor( EMPTY_LIST_MSG_X, EMPTY_LIST_MSG_Y1 );
         p->print( "No .rod files" );
-        p->setCursor( 5, 20 );
+        p->setCursor( EMPTY_LIST_MSG_X, EMPTY_LIST_MSG_Y2 );
         p->print( ":(" );
         return;
     }
 
     bool can_scroll_up   = ( _scroll > 0 );
-    bool can_scroll_down = ( _scroll + VISIBLE_ROWS < (int)_entries.size() );
+    int  items_capacity  = VISIBLE_ROWS - ( can_scroll_up ? 1 : 0 );
+    bool can_scroll_down = ( _scroll + items_capacity < (int)_entries.size() );
 
     p->setFont( &TomThumb );
     p->setTextColor( COLOR_TEXT );
+
+    // Calculate screen row of the selected item
+    int selected_screen_row = _selected - _scroll + (can_scroll_up ? 1 : 0);
 
     // Draw buttons
     for( int i = 0; i < VISIBLE_ROWS; i++ )
@@ -302,18 +313,18 @@ void FileBrowser::draw()
         // Handle scroll indicators
         if( i == 0 && can_scroll_up )
         {
-            draw_rect_unfilled( p, COLOR_UI_ACCENT, 0, i * 8, 93, 9 );
-            draw_rect( p, COLOR_UI_NOTICE, 1, 1 + i * 8, 91, 7 );
-            p->setCursor( 2, 2 + 5 );
+            draw_rect_unfilled( p, COLOR_UI_ACCENT, ROW_BORDER_X, i * ROW_HEIGHT, LIST_WIDTH, SCROLL_INDICATOR_HEIGHT );
+            draw_rect( p, COLOR_UI_NOTICE, ROW_CONTENT_X, SCROLL_INDICATOR_Y_OFFSET + i * ROW_HEIGHT, ROW_CONTENT_WIDTH, ROW_CONTENT_HEIGHT );
+            p->setCursor( SCROLL_TEXT_X, SCROLL_TEXT_Y_OFFSET + ROW_TEXT_Y_OFFSET );
             p->print( "^^^" );
             continue;
         }
 
         if( i == VISIBLE_ROWS - 1 && can_scroll_down )
         {
-            draw_rect_unfilled( p, COLOR_UI_ACCENT, 0, i * 8, 93, 9 );
-            draw_rect( p, COLOR_UI_NOTICE, 1, 1 + i * 8, 91, 7 );
-            p->setCursor( 2, 2 + i * 8 + 5 );
+            draw_rect_unfilled( p, COLOR_UI_ACCENT, ROW_BORDER_X, i * ROW_HEIGHT, LIST_WIDTH, SCROLL_INDICATOR_HEIGHT );
+            draw_rect( p, COLOR_UI_NOTICE, ROW_CONTENT_X, SCROLL_INDICATOR_Y_OFFSET + i * ROW_HEIGHT, ROW_CONTENT_WIDTH, ROW_CONTENT_HEIGHT );
+            p->setCursor( SCROLL_TEXT_X, SCROLL_TEXT_Y_OFFSET + i * ROW_HEIGHT + SCROLL_TEXT_Y_OFFSET );
             p->print( "vvv" );
             continue;
         }
@@ -325,18 +336,18 @@ void FileBrowser::draw()
 
         const Entry &e = _entries[idx];
 
-        draw_rect_unfilled( p, COLOR_UI_ACCENT, 0, i * 8, 93, 9 );
+        draw_rect_unfilled( p, COLOR_UI_ACCENT, ROW_BORDER_X, i * ROW_HEIGHT, LIST_WIDTH, SCROLL_INDICATOR_HEIGHT );
 
         if( e.is_dir )
-            draw_rect( p, COLOR_UI_TERTIARY, 1, 1 + i * 8, 91, 7 );
+            draw_rect( p, COLOR_UI_TERTIARY, ROW_CONTENT_X, ROW_CONTENT_X + i * ROW_HEIGHT, ROW_CONTENT_WIDTH, ROW_CONTENT_HEIGHT );
         else
-            draw_rect( p, COLOR_UI_MAIN, 1, 1 + i * 8, 91, 7 );
+            draw_rect( p, COLOR_UI_MAIN, ROW_CONTENT_X, ROW_CONTENT_X + i * ROW_HEIGHT, ROW_CONTENT_WIDTH, ROW_CONTENT_HEIGHT );
 
-        int x = 2;
-        int y = 2 + i * 8;
-        p->setCursor( x, y + 5 );
+        int x = ROW_TEXT_X;
+        int y = ROW_TEXT_X + i * ROW_HEIGHT;
+        p->setCursor( x, y + ROW_TEXT_Y_OFFSET );
 
-        char name[ 22 ];
+        char name[ ROW_MAX_NAME_LEN ];
         if( e.path == ".." )
         {
             strncpy( name, "back", sizeof(name) );
@@ -345,17 +356,17 @@ void FileBrowser::draw()
         {
             strncpy( name, basename( e.path ), 21 );
         }
-        name[ 21 ] = '\0';
+        name[ ROW_MAX_NAME_LEN - 1 ] = '\0';
         p->print( name );
     }
 
-    draw_rect_unfilled( p, COLOR_TEXT, 0, _selected * 8, 93, 9 );
+    draw_rect_unfilled( p, COLOR_TEXT, ROW_BORDER_X, selected_screen_row * ROW_HEIGHT, LIST_WIDTH, SELECTION_HIGHLIGHT_HEIGHT );
 
     // Metadata
     {
         p->setFont( &TomThumb );
         p->setTextColor( COLOR_TEXT );
-        p->setCursor( 95, 43 );
+        p->setCursor( METADATA_CURSOR_X, METADATA_CURSOR_Y );
         
         if( _entries[ _selected ].is_dir )
         {
@@ -394,7 +405,7 @@ void FileBrowser::draw()
             strncpy( title, basename( _preview_path ), 29 );
         }
         title[29] = '\0';
-        p->setCursor( 1, 63 );
+        p->setCursor( TITLE_DISPLAY_X, TITLE_DISPLAY_Y );
         p->print( title );
     }
     

@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include <esp32-hal-psram.h>
 #include <SD_MMC.h>
+#include <ff.h>
 #include "config.h"
 #include "rod_format.h"
 
@@ -25,9 +26,35 @@ extern AppManager g_app_manager;
 
 /*--- MACROS ------------------------------------------------------------------------------------*/
 
-static inline File &file_ref( void *p )
+static inline FIL &fat_file_ref( void *p )
 {
-    return *reinterpret_cast<File *>( p );
+    return *reinterpret_cast<FIL *>( p );
+}
+
+static bool fat_read_exact( FIL &file, void *buf, size_t len )
+{
+    if( len > UINT_MAX )
+    {
+        return false;
+    }
+
+    UINT bytes_read = 0;
+    return ( f_read( &file, buf, (UINT)len, &bytes_read ) == FR_OK ) && ( bytes_read == len );
+}
+
+static bool fat_seek_to( FIL &file, uint64_t offset )
+{
+    if( offset > (uint64_t)UINT32_MAX && sizeof(FSIZE_t) < sizeof(uint64_t) )
+    {
+        return false;
+    }
+
+    return f_lseek( &file, (FSIZE_t)offset ) == FR_OK;
+}
+
+static uint64_t fat_position( FIL &file )
+{
+    return (uint64_t)f_tell( &file );
 }
 
 
@@ -214,7 +241,7 @@ void VideoPlayerApp::readahead_task( void *param )
     Serial.print( "[vp] readahead\r\n" );
 
     VideoPlayerApp *self = static_cast<VideoPlayerApp *>( param );
-    File &f = file_ref( self->_file );
+    FIL &f = fat_file_ref( self->_file );
 
     // Heap buffer for one frame's worth of PCM (avoids large stack allocation).
     // Must hold MAX_AUDIO_SAMPLES samples × channels so stereo frames don't overflow.
@@ -228,7 +255,7 @@ void VideoPlayerApp::readahead_task( void *param )
     {
         // 1. Frame header
         FrameHeader fhdr;
-        if( f.read( (uint8_t *)&fhdr, sizeof( fhdr ) ) != sizeof( fhdr ) )
+        if( !fat_read_exact( f, &fhdr, sizeof( fhdr ) ) )
         {
             break;
         }
@@ -246,14 +273,25 @@ void VideoPlayerApp::readahead_task( void *param )
                 samples_to_push = (uint16_t)MAX_AUDIO_SAMPLES;
                 size_t skip = (size_t)( fhdr.audio_samples - samples_to_push )
                             * self->_channels * sizeof(int16_t);
-                f.read( (uint8_t *)pcm_tmp,
-                        (size_t)samples_to_push * self->_channels * sizeof(int16_t) );
-                f.seek( f.position() + skip );
+                if( !fat_read_exact( f,
+                                     pcm_tmp,
+                                     (size_t)samples_to_push * self->_channels * sizeof(int16_t) ) )
+                {
+                    break;
+                }
+                if( !fat_seek_to( f, fat_position( f ) + skip ) )
+                {
+                    break;
+                }
             }
             else
             {
-                f.read( (uint8_t *)pcm_tmp,
-                        (size_t)samples_to_push * self->_channels * sizeof(int16_t) );
+                if( !fat_read_exact( f,
+                                     pcm_tmp,
+                                     (size_t)samples_to_push * self->_channels * sizeof(int16_t) ) )
+                {
+                    break;
+                }
             }
             audio_ring_push( pcm_tmp, samples_to_push, self->_channels );
             // blocks here if ring is full — keeps read-ahead from running too far ahead
@@ -278,7 +316,7 @@ void VideoPlayerApp::readahead_task( void *param )
             break;
         }
 
-        if( f.read( vf->pixels, self->_frame_video_bytes ) != self->_frame_video_bytes )
+        if( !fat_read_exact( f, vf->pixels, self->_frame_video_bytes ) )
         {
             xQueueSend( self->_free_queue, &vf, portMAX_DELAY );  // return slot
             break;
@@ -308,8 +346,9 @@ void VideoPlayerApp::start_playback( const std::string &path )
     Serial.print( "[vp] Starting playback\r\n" );
     _is_running = true;
 
-    File *fp = new File( SD_MMC.open( path.c_str(), FILE_READ ) );
-    if( !*fp )
+    FIL *fp = new FIL();
+    std::string fat_path = std::string( "0:" ) + path;
+    if( f_open( fp, fat_path.c_str(), FA_READ ) != FR_OK )
     {
         Serial.printf( "[player] Cannot open: %s\r\n", path.c_str() );
         delete fp;
@@ -318,11 +357,11 @@ void VideoPlayerApp::start_playback( const std::string &path )
     }
 
     RodHeader hdr;
-    if( ( fp->read( (uint8_t *)&hdr, sizeof(hdr) ) != sizeof( hdr ) )
-     || ( hdr.magic != ROD_MAGIC                                    ) )
+    if( !fat_read_exact( *fp, &hdr, sizeof( hdr ) )
+     || ( hdr.magic != ROD_MAGIC ) )
     {
         Serial.print( "[player] Invalid .rod file.\r\n" );
-        fp->close();
+        f_close( fp );
         delete fp;
         _state = PlayerState::DONE;
         return;
@@ -348,13 +387,17 @@ void VideoPlayerApp::start_playback( const std::string &path )
     _current_frame         = 0;
     _readahead_start_frame = 0;
     _frame_offsets         = nullptr;
+    _index_count           = 0;
 
-    // Load frame offset table if the file contains one.
-    // File::seek() takes uint32_t, so skip the index when index_offset exceeds 4 GB.
-    if( hdr.index_offset != 0 && hdr.frame_count > 0
-     && hdr.index_offset <= (uint64_t)UINT32_MAX )
+    // Load a decimated frame offset table if the file contains an index.
+    // The on-disk index has one uint64 per frame, but we only need offsets at
+    // _seek_step_frames intervals (every 5 s).  Reading the full table in
+    // small chunks and keeping only every Nth entry cuts PSRAM usage ~120×,
+    // making seek viable even for multi-hour movies.
+    if( hdr.index_offset != 0 && hdr.frame_count > 0 )
     {
-        size_t table_bytes = (size_t)hdr.frame_count * sizeof(uint64_t);
+        _index_count = ( _frame_count + _seek_step_frames - 1 ) / _seek_step_frames;
+        size_t table_bytes = (size_t)_index_count * sizeof(uint64_t);
         _frame_offsets = (uint64_t *)heap_caps_malloc
         (
             table_bytes,
@@ -362,23 +405,73 @@ void VideoPlayerApp::start_playback( const std::string &path )
         );
         if( _frame_offsets )
         {
-            fp->seek( (uint32_t)hdr.index_offset );
-            if( fp->read( (uint8_t *)_frame_offsets, table_bytes ) != table_bytes )
+            if( !fat_seek_to( *fp, hdr.index_offset ) )
             {
                 heap_caps_free( _frame_offsets );
                 _frame_offsets = nullptr;
-                Serial.print( "[player] Frame index read failed — seek disabled.\r\n" );
-                fp->seek( sizeof(RodHeader) );  // restore file position to first frame
+                _index_count   = 0;
+                Serial.print( "[player] Frame index seek failed — seek disabled.\r\n" );
+                fat_seek_to( *fp, sizeof(RodHeader) );
             }
             else
             {
-                // Reposition file at the first frame.
-                fp->seek( (uint32_t)_frame_offsets[0] );
-                Serial.printf( "[player] Frame index loaded (%u entries).\r\n", hdr.frame_count );
+                // Read the full on-disk index in small chunks, extracting every
+                // _seek_step_frames-th entry into the decimated table.
+                static constexpr uint32_t CHUNK_ENTRIES = 64;   // 512 bytes on stack
+                uint64_t chunk_buf[CHUNK_ENTRIES];
+                uint32_t remaining = _frame_count;
+                uint32_t src_idx   = 0;   // frame index in the on-disk table
+                uint32_t dst_idx   = 0;   // position in _frame_offsets
+                bool ok = true;
+
+                while( remaining > 0 && ok )
+                {
+                    uint32_t to_read = ( remaining > CHUNK_ENTRIES ) ? CHUNK_ENTRIES : remaining;
+                    if( !fat_read_exact( *fp, chunk_buf, (size_t)to_read * sizeof(uint64_t) ) )
+                    {
+                        ok = false;
+                        break;
+                    }
+                    for( uint32_t i = 0; i < to_read; i++ )
+                    {
+                        if( ( src_idx + i ) % _seek_step_frames == 0 )
+                            _frame_offsets[dst_idx++] = chunk_buf[i];
+                    }
+                    src_idx   += to_read;
+                    remaining -= to_read;
+                }
+
+                if( !ok || dst_idx == 0 )
+                {
+                    heap_caps_free( _frame_offsets );
+                    _frame_offsets = nullptr;
+                    _index_count   = 0;
+                    Serial.print( "[player] Frame index read failed — seek disabled.\r\n" );
+                    fat_seek_to( *fp, sizeof(RodHeader) );
+                }
+                else
+                {
+                    _index_count = dst_idx;
+                    // Reposition file at the first frame.
+                    if( fat_seek_to( *fp, _frame_offsets[0] ) )
+                    {
+                        Serial.printf( "[player] Frame index loaded (%u of %u entries).\r\n",
+                                       _index_count, hdr.frame_count );
+                    }
+                    else
+                    {
+                        heap_caps_free( _frame_offsets );
+                        _frame_offsets = nullptr;
+                        _index_count   = 0;
+                        fat_seek_to( *fp, sizeof(RodHeader) );
+                        Serial.print( "[player] Frame index unusable at runtime — seek disabled.\r\n" );
+                    }
+                }
             }
         }
         else
         {
+            _index_count = 0;
             Serial.print( "[player] PSRAM alloc for frame index failed — seek disabled.\r\n" );
         }
     }
@@ -398,7 +491,7 @@ void VideoPlayerApp::start_playback( const std::string &path )
             heap_caps_free( _frame_offsets );
             _frame_offsets = nullptr;
         }
-        fp->close();
+        f_close( fp );
         delete fp;
         _file = nullptr;
         _state = PlayerState::DONE;
@@ -493,6 +586,7 @@ void VideoPlayerApp::stop_playback()
     {
         heap_caps_free( _frame_offsets );
         _frame_offsets = nullptr;
+        _index_count   = 0;
     }
 
     if( _pixel_pool )
@@ -503,8 +597,8 @@ void VideoPlayerApp::stop_playback()
 
     if( _file )
     {
-        file_ref( _file ).close();
-        delete reinterpret_cast<File *>( _file );
+        f_close( &fat_file_ref( _file ) );
+        delete reinterpret_cast<FIL *>( _file );
         _file = nullptr;
     }
 }
@@ -513,7 +607,15 @@ void VideoPlayerApp::seek_to_frame( uint32_t target )
 {
     if( !_frame_offsets || !_file ) return;
     if( target >= _frame_count ) target = _frame_count - 1;
-    Serial.printf( "[player] Seeking to frame %u\r\n", target );
+
+    // Snap to the nearest stored offset (decimated index stores every
+    // _seek_step_frames-th frame).
+    target = ( target / _seek_step_frames ) * _seek_step_frames;
+    uint32_t idx = target / _seek_step_frames;
+    if( idx >= _index_count ) idx = _index_count - 1;
+    target = idx * _seek_step_frames;
+
+    Serial.printf( "[player] Seeking to frame %u (index slot %u)\r\n", target, idx );
 
     // 1. Stop the readahead task.
     _readahead_stop = true;
@@ -533,14 +635,17 @@ void VideoPlayerApp::seek_to_frame( uint32_t target )
     // 3. Read the target frame header to get the audio clock offset,
     //    skip the audio data, then render a synchronous preview frame
     //    so the display updates immediately (no audio during scrubbing).
-    File &f = file_ref( _file );
-    f.seek( (uint32_t)_frame_offsets[target] );
+    FIL &f = fat_file_ref( _file );
+    if( !fat_seek_to( f, _frame_offsets[idx] ) ) return;
     FrameHeader fhdr{};
     uint32_t audio_offset = 0;
-    if( f.read( (uint8_t *)&fhdr, sizeof(fhdr) ) == sizeof(fhdr) )
+    if( fat_read_exact( f, &fhdr, sizeof(fhdr) ) )
     {
         audio_offset = fhdr.audio_sample_offset;
-        f.seek( f.position() + (size_t)fhdr.audio_samples * _channels * sizeof(int16_t) );
+        if( !fat_seek_to( f, fat_position( f ) + (size_t)fhdr.audio_samples * _channels * sizeof(int16_t) ) )
+        {
+            return;
+        }
 
         uint8_t *preview = (uint8_t *)heap_caps_malloc
         (
@@ -549,7 +654,7 @@ void VideoPlayerApp::seek_to_frame( uint32_t target )
         );
         if( preview )
         {
-            if( f.read( preview, _frame_video_bytes ) == _frame_video_bytes )
+            if( fat_read_exact( f, preview, _frame_video_bytes ) )
                 matrix_render_frame( preview, _panel_w, _panel_h, (PixelFormat)_pixel_format );
             heap_caps_free( preview );
         }
@@ -559,7 +664,7 @@ void VideoPlayerApp::seek_to_frame( uint32_t target )
     audio_set_playback_position( audio_offset );
 
     // 5. Reposition the file at the target frame start for the readahead task.
-    f.seek( (uint32_t)_frame_offsets[target] );
+    if( !fat_seek_to( f, _frame_offsets[idx] ) ) return;
 
     // 6. Restart readahead from the target frame.
     _current_frame         = target;

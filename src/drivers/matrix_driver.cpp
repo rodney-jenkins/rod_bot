@@ -51,13 +51,12 @@ void matrix_init()
     cfg.gpio.oe  = HUB75_OE;
     cfg.gpio.clk = HUB75_CLK;
 
-    // RGJ TODO
-    cfg.i2sspeed = HUB75_I2S_CFG::HZ_10M; // RGJ - if this speed reduces flicker, try stepping back up slowly (20M default)
-    cfg.clkphase = false; // RGJ - set to true if this causes issues (should help if FM6126A, not if ICN2038S)
+    cfg.i2sspeed = HUB75_I2S_SPEED;
+    cfg.clkphase = HUB75_CLK_PHASE;
 
     s_panel = new MatrixPanel_I2S_DMA( cfg );
     s_panel->begin();
-    s_panel->setBrightness8( 192 );  // ~75% — comfortable default; adjust as needed
+    s_panel->setBrightness8( 192 );  // ~75% — comfortable default w/ acryllic; adjust as needed
     s_panel->clearScreen();
 }
 

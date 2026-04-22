@@ -1,0 +1,15 @@
+{
+  "spotify_client_id": "0704408993ac47c685e16f7c6e7bed84",
+  "spotify_client_secret": "0c953cb1488c4f9fa2f1bf5d1543e5f0",
+  "spotify_redirect_uri": "http://127.0.0.1:8000/callback",
+  "playlists": [
+    {
+      "name": "Rod Vibes",
+      "id": "3XvZuHnRyeys1UU9bh7Qyq"
+    },
+    {
+      "name": "Chad Vibes",
+      "id": "2Kbr9NnNDsqW22lhhDFUER"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "spotify_client_id": "YOUR_SPOTIFY_CLIENT_ID",
+  "spotify_client_secret": "YOUR_SPOTIFY_CLIENT_SECRET",
+  "spotify_redirect_uri": "http://localhost:8888/callback",
+  "playlists": [
+    {
+      "name": "Chill Vibes",
+      "id": "SPOTIFY_PLAYLIST_ID_1"
+    },
+    {
+      "name": "Lo-Fi Hip Hop",
+      "id": "SPOTIFY_PLAYLIST_ID_2"
+    },
+    {
+      "name": "Electronic",
+      "id": "SPOTIFY_PLAYLIST_ID_3"
+    }
+  ]
+}

@@ -11,14 +11,14 @@
 
 
 // Internet
-const char *SSID = "Slow_Internet";
-const char *PASSWORD = "YouGotMail911";
+constexpr const char *SSID = "Slow_Internet";
+constexpr const char *PASSWORD = "YouGotMail911";
+
+
+#define SRVR_BASE_URL "http://192.168.86.24:5000"
 
 // Commands
-const char *SRVR_IMAGE_CMD           = "http://192.168.86.21:5000/image"
-const char *SRVR_PLAYLISTS_CMD       = "http://192.168.86.21:5000/playlists"
-const char *SRVR_PLAY_PLAYLIST_CMD   = "http://192.168.86.21:5000/play/playlist/"
-const char *SRVR_STREAM_PLAYLIST_CMD = "http://192.168.86.21:5000/stream?playlist_id="
+constexpr const char *SRVR_IMAGE_CMD           = SRVR_BASE_URL "/image";
 
 
 /*--- PROTOTYPES --------------------------------------------------------------------------------*/

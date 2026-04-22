@@ -29,6 +29,7 @@ static std::atomic<uint64_t>      s_samples_played{0};
 static TaskHandle_t               s_task_handle  = nullptr;
 static volatile bool              s_running      = false;
 static volatile bool              s_paused       = false;
+static volatile uint8_t           s_volume       = 192;   // 0-255, default ~75%
 
 // I2S write buffer in DRAM (not PSRAM — DMA must access it directly).
 // Sized for ~512 stereo sample-pairs per I2S write call.
@@ -216,20 +217,28 @@ void audio_ring_push( const int16_t *pcm, uint16_t samples, uint8_t src_channels
     const uint8_t *send_buf;
     size_t         send_bytes;
 
+    const uint8_t vol = s_volume;
+
     if( src_channels == 2 )
     {
-        // Already interleaved stereo — push directly.
-        send_buf   = (const uint8_t *)pcm;
-        send_bytes = (size_t)samples * 2 * sizeof(int16_t);
+        // Stereo — apply volume into s_stereo_expand.
+        uint16_t count = ( samples > MAX_AUDIO_SAMPLES ) ? (uint16_t)MAX_AUDIO_SAMPLES : samples;
+        for( uint16_t i = 0; i < count * 2; i++ )
+        {
+            s_stereo_expand[i] = (int16_t)( ( (int32_t)pcm[i] * vol ) >> 8 );
+        }
+        send_buf   = (const uint8_t *)s_stereo_expand;
+        send_bytes = (size_t)count * 2 * sizeof(int16_t);
     }
     else
     {
-        // Mono — duplicate each sample to L+R in s_stereo_expand.
+        // Mono — duplicate each sample to L+R in s_stereo_expand with volume.
         uint16_t count = ( samples > MAX_AUDIO_SAMPLES ) ? (uint16_t)MAX_AUDIO_SAMPLES : samples;
         for( uint16_t i = 0; i < count; i++ )
         {
-            s_stereo_expand[i * 2]     = pcm[i];
-            s_stereo_expand[i * 2 + 1] = pcm[i];
+            int16_t scaled = (int16_t)( ( (int32_t)pcm[i] * vol ) >> 8 );
+            s_stereo_expand[i * 2]     = scaled;
+            s_stereo_expand[i * 2 + 1] = scaled;
         }
         send_buf   = (const uint8_t *)s_stereo_expand;
         send_bytes = (size_t)count * 2 * sizeof(int16_t);
@@ -267,4 +276,14 @@ void audio_set_playback_position( uint64_t sample_offset )
     // and is therefore not blocked on xStreamBufferReceive.
     xStreamBufferReset( s_ring );
     s_samples_played.store( sample_offset, std::memory_order_relaxed );
+}
+
+void audio_set_volume( uint8_t vol )
+{
+    s_volume = vol;
+}
+
+uint8_t audio_get_volume()
+{
+    return s_volume;
 }

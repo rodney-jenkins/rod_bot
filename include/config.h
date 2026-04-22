@@ -6,6 +6,7 @@
 /*--- INCLUDES ----------------------------------------------------------------------------------*/
 
 #include <Arduino.h>
+#include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 #include <stdint.h>
 
 
@@ -14,6 +15,18 @@
 // HUB75 LED Matrx
 static constexpr int PANEL_W = 128;
 static constexpr int PANEL_H = 64;
+
+// HUB75 panel timing.
+// Quick tuning knobs when comparing flicker vs stability:
+// - Try HZ_10M, then HZ_20M if the image is stable.
+// - Try CLKPHASE false first, then true if colors or latching look off.
+//
+// Suggested test presets:
+//   Preset A: HZ_10M + false
+//   Preset B: HZ_20M + false
+//   Preset C: HZ_20M + true
+static constexpr auto HUB75_I2S_SPEED = HUB75_I2S_CFG::HZ_10M;
+static constexpr bool HUB75_CLK_PHASE = false;
 
 // HUB75 pin assignments
 static constexpr int HUB75_R1  = 17;

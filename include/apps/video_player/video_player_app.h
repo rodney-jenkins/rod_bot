@@ -92,9 +92,12 @@ private:
     static void readahead_task( void *param );
 
     // Seek support — only active when the .rod file contains a frame index table.
-    uint64_t  *_frame_offsets   = nullptr;  // PSRAM: frame_count absolute file offsets (uint64 for >4 GB files)
+    // The full on-disk index (one uint64 per frame) is decimated at load time:
+    // only every _seek_step_frames-th offset is kept, cutting memory ~120×.
+    uint64_t  *_frame_offsets   = nullptr;  // PSRAM: _index_count entries (decimated)
+    uint32_t   _index_count     = 0;        // entries stored in _frame_offsets
     uint32_t   _current_frame   = 0;        // last frame index rendered by playback_tick()
-    uint32_t   _seek_step_frames = 120;     // frames per encoder tick, computed from fps
+    uint32_t   _seek_step_frames = 120;     // frames per seek step, computed from fps
 
     void seek_to_frame( uint32_t target );
 };
