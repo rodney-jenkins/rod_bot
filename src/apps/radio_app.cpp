@@ -3,17 +3,51 @@
 /*--- INCLUDES ----------------------------------------------------------------------------------*/
 
 #include <Arduino.h>
-#include <HTTPClient.h>
-#include <WiFi.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include "freertos/semphr.h"
+#include <SD_MMC.h>
+#include <vector>
 #include <driver/i2s.h>
 #include "config.h"
-
-#include "core/app_manager.h"
-#include "core/ui.h"
-#include "core/wifi.h"
-#include "drivers/audio_driver.h"
-#include "drivers/input_driver.h"
 #include "apps/radio_app.h"
+
+
+/*--- CONSTANTS ---------------------------------------------------------------------------------*/
+
+enum AppState {
+    MUSIC_SELECTING_PLAYLIST = 0,
+    MUSIC_PLAYING = 1
+};
+
+enum MenuSubstate {
+    MENU_SCANNING = 0,      // loading playlist list
+    MENU_BROWSING = 1,      // showing menu, waiting for selection
+    MENU_STARTING_PLAY = 2  // preparing to play (gathering songs)
+};
+
+enum ButtonPress {
+    BTN_NONE = 0,
+    BTN_UP = 1,
+    BTN_DOWN = 2,
+    BTN_SELECT = 3
+};
+
+
+#define I2S_PORT        I2S_NUM_0
+#define AUDIO_BUF_SIZE  4096
+#define SONG_QUEUE_LEN  4
+#define MAX_PATH_LEN    256
+#define THUMB_W         50
+#define THUMB_H         50
+#define THUMB_SIZE      (THUMB_W * THUMB_H * 2)  // 50x50 RGB565 = 5000 bytes
+#define META_STR_LEN    64
+
+// Readahead ring buffer: must be a power of two.
+// 64 KB in PSRAM gives ~370 ms headroom at 44.1 kHz / 16-bit / stereo.
+#define RING_BUF_SIZE   (64 * 1024)
+#define RING_BUF_MASK   (RING_BUF_SIZE - 1)
 
 
 /*--- GLOBALS -----------------------------------------------------------------------------------*/
