@@ -338,19 +338,23 @@ static void installI2S(uint32_t sampleRate, uint16_t bitsPerSample, uint16_t num
  
 // Read current now-playing info. Returns true if a track is currently active.
 // `thumbOut` receives the raw pointer (still owned by audioTask — do NOT free it).
+// `playingSongIdxOut` receives the playlistSongs index atomically with the rest of
+// the snapshot so draw() never sees a mismatched (active, index) pair.
 bool musicPlayerGetNowPlaying(char* artistOut, size_t artistLen,
                               char* albumOut,  size_t albumLen,
                               char* songOut,   size_t songLen,
-                              const uint16_t** thumbOut, bool* hasThumb) {
+                              const uint16_t** thumbOut, bool* hasThumb,
+                              int* playingSongIdxOut) {
     if (!metaMutex) return false;
     xSemaphoreTake(metaMutex, portMAX_DELAY);
     bool active = nowPlaying.active;
     if (active) {
-        if (artistOut) strlcpy(artistOut, nowPlaying.artist, artistLen);
-        if (albumOut)  strlcpy(albumOut,  nowPlaying.album,  albumLen);
-        if (songOut)   strlcpy(songOut,   nowPlaying.song,   songLen);
-        if (thumbOut)  *thumbOut  = nowPlaying.thumbnail;
-        if (hasThumb)  *hasThumb = nowPlaying.hasThumb;
+        if (artistOut)         strlcpy(artistOut, nowPlaying.artist, artistLen);
+        if (albumOut)          strlcpy(albumOut,  nowPlaying.album,  albumLen);
+        if (songOut)           strlcpy(songOut,   nowPlaying.song,   songLen);
+        if (thumbOut)          *thumbOut          = nowPlaying.thumbnail;
+        if (hasThumb)          *hasThumb          = nowPlaying.hasThumb;
+        if (playingSongIdxOut) *playingSongIdxOut = g_musicApp.playingSongIdx;
     }
     xSemaphoreGive(metaMutex);
     return active;
@@ -515,7 +519,8 @@ static void audioTask(void* /*param*/) {
         if (xQueueReceive(songQueue, &item, pdMS_TO_TICKS(200)) != pdTRUE)
             continue;
  
-        // Publish "now playing"
+        // Publish "now playing" — playingSongIdx is updated inside the same mutex
+        // so draw() always sees a consistent (active, index) pair.
         xSemaphoreTake(metaMutex, portMAX_DELAY);
         if (nowPlaying.thumbnail) free(nowPlaying.thumbnail);
         strlcpy(nowPlaying.artist, item.artist, META_STR_LEN);
@@ -525,10 +530,8 @@ static void audioTask(void* /*param*/) {
         nowPlaying.hasThumb  = item.hasThumb;
         nowPlaying.active    = true;
         item.thumbnail = nullptr;
-        xSemaphoreGive(metaMutex);
-
-        // Track which playlistSongs entry is now playing so draw() can look up the playlist name
         g_musicApp.playingSongIdx = item.playlistIdx;
+        xSemaphoreGive(metaMutex);
  
         // Signal the main task that metadata changed so draw() repaints
         g_musicApp.dirty = true;
@@ -595,9 +598,14 @@ static void audioTask(void* /*param*/) {
  
         size_t written;
         while (!stopRequested && !backRequested) {
+            // Read eof BEFORE available() so we never miss the last write.
+            // readerTask always sets eof *after* its final ringBuf.write(), so
+            // sampling eof first and then available() guarantees that if eof is
+            // true and avail is still 0, the buffer is genuinely empty.
+            bool eof   = ringBuf.eof;
             size_t avail = ringBuf.available();
             if (avail == 0) {
-                if (ringBuf.eof) break;
+                if (eof) break;
                 vTaskDelay(pdMS_TO_TICKS(1));
                 continue;
             }
@@ -962,18 +970,19 @@ void RadioApp::draw()
         char song[META_STR_LEN]   = {};
         bool hasThumb = false;
         const uint16_t* thumb = nullptr;
- 
+        int currentSongIdx = -1;
+
         bool active = musicPlayerGetNowPlaying( artist, sizeof(artist),
                                                 album,  sizeof(album),
                                                 song,   sizeof(song),
-                                                &thumb, &hasThumb );
+                                                &thumb, &hasThumb,
+                                                &currentSongIdx );
         if (active)
         {
             // Derive display name for the current playlist.
             // In Shuffle All mode each entry stores its source playlist at index [1];
             // use that so the now-playing screen shows the song's actual playlist.
             String plNameStr;
-            int currentSongIdx = g_musicApp.playingSongIdx;
             if (g_musicApp.chosenPlaylist == SHUFFLE_ALL_LABEL &&
                 currentSongIdx >= 0 &&
                 currentSongIdx < (int)g_musicApp.playlistSongs.size() &&
@@ -1057,10 +1066,3 @@ void RadioApp::onExit()
  
     Serial.println("[musicApp] Stopped");
 }
-
-// Download with:
-// yt-dlp -x --audio-format mp3 "Youtube URL"
-// Convert mp3 with:
-// ffmpeg -i song.mp3 -acodec pcm_s16le -ar 44100 -ac 2 song.wav
-// For batch conversion:
-// for f in *.mp3; do ffmpeg -i "$f" -acodec pcm_s16le -ar 44100 -ac 2 "${f%.mp3}.wav"; done
