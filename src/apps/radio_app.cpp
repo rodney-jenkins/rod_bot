@@ -668,13 +668,6 @@ void RadioApp::onEnter()
     Serial.println("[musicApp] Started");
 }
  
-void RadioApp::onResume()
-{
-    Serial.println("[musicApp] Resumed");
-    g_musicApp.dirty = true;
-    matrix_clear();
-}
- 
 AppCmd RadioApp::update()
 {
     if (!g_musicApp.isRunning) return AppCmd::NONE;
