@@ -86,16 +86,13 @@ void MenuApp::draw_menu( MatrixPanel_I2S_DMA * matrix )
     matrix->setFont( nullptr );
     matrix->setTextSize( 1 );
     matrix->setTextColor( COLOR_TEXT );
-
+m
     for( int i = 0; i < UI_MENU_NUM_BUTTONS; i++ )
     {
-        x = UI_MENU_FIRST_BUTTON_X;
-        y = UI_MENU_FIRST_BUTTON_Y + UI_MENU_BUTTON_Y_OFFSET * i;
+        x = UI_MENU_FIRST_BUTTON_X + UI_MENU_BUTTON_X_OFFSET * i;
+        y = UI_MENU_FIRST_BUTTON_Y;
 
-        draw_rect_unfilled( matrix, COLOR_UI_ACCENT, x - 1, y - 1, UI_MENU_BUTTON_WIDTH + 2, UI_MENU_BUTTON_HEIGHT + 2 );
-        draw_rect( matrix, COLOR_UI_MAIN, x, y, UI_MENU_BUTTON_WIDTH, UI_MENU_BUTTON_HEIGHT );
-        matrix->setCursor( x + 1, y + 1 );
-        matrix->print( _items[i].label );
+        draw_rect_unfilled( matrix, COLOR_UI_ACCENT, x, y, UI_MENU_BUTTON_WIDTH, UI_MENU_BUTTON_HEIGHT );
     }
 }
 
@@ -160,8 +157,10 @@ void MenuApp::draw()
     draw_pic( p );
 
     // Draw selected box and label
-    uint16_t x = UI_MENU_FIRST_BUTTON_X - 1;
-    uint16_t y = UI_MENU_FIRST_BUTTON_Y - 1 + _selected * UI_MENU_BUTTON_Y_OFFSET;
-    draw_rect_unfilled( p, COLOR_TEXT, x, y, UI_MENU_BUTTON_WIDTH + 2, UI_MENU_BUTTON_HEIGHT + 2 );
-
+    uint16_t x = UI_MENU_FIRST_BUTTON_X + 1 + _selected * UI_MENU_BUTTON_X_OFFSET;
+    uint16_t y = UI_MENU_FIRST_BUTTON_Y + 1;
+    draw_rect( matrix, COLOR_UI_MAIN, x, y, UI_MENU_BUTTON_WIDTH - 2, UI_MENU_BUTTON_HEIGHT - 2 );
+    
+    matrix->setCursor( 2, 55 );
+    matrix->print( _items[i].label );
 }

@@ -14,13 +14,13 @@
 
 /*--- CONSTANTS ---------------------------------------------------------------------------------*/
 
-#define UI_MENU_NUM_BUTTONS       4
+#define UI_MENU_NUM_BUTTONS       5
 
-#define UI_MENU_BUTTON_WIDTH     62
-#define UI_MENU_BUTTON_HEIGHT     9
-#define UI_MENU_FIRST_BUTTON_X    5
-#define UI_MENU_FIRST_BUTTON_Y    7
-#define UI_MENU_BUTTON_Y_OFFSET  14
+#define UI_MENU_BUTTON_WIDTH      6
+#define UI_MENU_BUTTON_HEIGHT     6
+#define UI_MENU_FIRST_BUTTON_X    2
+#define UI_MENU_FIRST_BUTTON_Y    2
+#define UI_MENU_BUTTON_X_OFFSET   9
 
 #define UI_MENU_PIC_X            75
 #define UI_MENU_PIC_Y             8
