@@ -14,7 +14,7 @@
 
 /*--- CONSTANTS ---------------------------------------------------------------------------------*/
 
-#define UI_MENU_NUM_BUTTONS       5
+#define UI_MENU_NUM_BUTTONS       4
 
 #define UI_MENU_BUTTON_WIDTH      6
 #define UI_MENU_BUTTON_HEIGHT     6
