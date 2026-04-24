@@ -36,6 +36,7 @@ enum MenuSubstate {
 #define AUDIO_BUF_SIZE  4096
 #define SONG_QUEUE_LEN  4
 #define MAX_PATH_LEN    256
+#define SHUFFLE_ALL_LABEL  "__SHUFFLE_ALL__"   // sentinel playlist name
 #define THUMB_W         50
 #define THUMB_H         50
 #define THUMB_SIZE      (THUMB_W * THUMB_H * 2)  // 50x50 RGB565 = 5000 bytes
@@ -381,10 +382,16 @@ static void drawPlaylistMenu( MatrixPanel_I2S_DMA* matrix,
         int x = FIRST_X;
         int y = FIRST_Y + i * Y_STRIDE;
  
-        // Strip leading path component for display
+        // Strip leading path component for display; handle Shuffle All sentinel
         const char* raw  = playlists[i].c_str();
-        const char* name = strrchr( raw, '/' );
-        name = name ? name + 1 : raw;
+        const char* name;
+        bool isShuffleAll = (playlists[i] == SHUFFLE_ALL_LABEL);
+        if (isShuffleAll) {
+            name = "Shuffle All";
+        } else {
+            name = strrchr( raw, '/' );
+            name = name ? name + 1 : raw;
+        }
  
         // Background fill + border
         draw_rect( matrix, COLOR_UI_MAIN, x, y, BTN_W, BTN_H );
@@ -394,7 +401,8 @@ static void drawPlaylistMenu( MatrixPanel_I2S_DMA* matrix,
         if ( i == cursor )
             draw_rect_unfilled( matrix, COLOR_TEXT, x - 1, y - 1, BTN_W + 2, BTN_H + 2 );
  
-        matrix->setTextColor( COLOR_TEXT );
+        // "Shuffle All" uses the accent colour so it stands apart from regular playlists
+        matrix->setTextColor( isShuffleAll ? COLOR_UI_ACCENT : COLOR_TEXT );
         matrix->setCursor( x + 2, y + 1 );
         matrix->print( name );
     }
@@ -405,6 +413,7 @@ static void drawNowPlaying( MatrixPanel_I2S_DMA* matrix,
                             const char* artist,
                             const char* song,
                             const char* album,
+                            const char* playlist,
                             const uint16_t* thumb,
                             bool hasThumb )
 {
@@ -428,6 +437,8 @@ static void drawNowPlaying( MatrixPanel_I2S_DMA* matrix,
         matrix->setCursor( TX, 2 );  matrix->print( song );
         matrix->setCursor( TX, 12 ); matrix->print( artist );
         matrix->setCursor( TX, 22 ); matrix->print( album );
+        matrix->setTextColor( COLOR_UI_ACCENT );
+        matrix->setCursor( TX, 32 ); matrix->print( playlist );
     }
     else
     {
@@ -435,6 +446,8 @@ static void drawNowPlaying( MatrixPanel_I2S_DMA* matrix,
         matrix->setCursor( 2, 2 );  matrix->print( song );
         matrix->setCursor( 2, 12 ); matrix->print( artist );
         matrix->setCursor( 2, 22 ); matrix->print( album );
+        matrix->setTextColor( COLOR_UI_ACCENT );
+        matrix->setCursor( 2, 32 ); matrix->print( playlist );
     }
 }
  
@@ -697,6 +710,9 @@ AppCmd RadioApp::update()
                     g_musicApp.playlists  = listSubDirs("/music");
                     if (!g_musicApp.playlists.empty())
                     {
+                        // Prepend the "Shuffle All" option at index 0
+                        g_musicApp.playlists.insert(g_musicApp.playlists.begin(),
+                                                    String(SHUFFLE_ALL_LABEL));
                         g_musicApp.cursor    = 0;
                         g_musicApp.menuState = MENU_BROWSING;
                         g_musicApp.dirty     = true;
@@ -734,26 +750,57 @@ AppCmd RadioApp::update()
                 {
                     // Confirm selection — gather and shuffle songs
                     g_musicApp.chosenPlaylist = g_musicApp.playlists[g_musicApp.cursor];
+                    bool shuffleAll = (g_musicApp.chosenPlaylist == SHUFFLE_ALL_LABEL);
                     const char* raw  = g_musicApp.chosenPlaylist.c_str();
-                    const char* name = strrchr( raw, '/' );
-                    name = name ? name + 1 : raw;
+                    const char* name = shuffleAll ? "Shuffle All" : strrchr( raw, '/' );
+                    if (!shuffleAll && name) name = name + 1; else if (!shuffleAll) name = raw;
                     Serial.printf("[musicApp] Selected playlist: %s\n", name);
  
                     g_musicApp.playlistSongs.clear();
                     std::vector<String> songDirs;
-                    for (const auto& dir : listSubDirs(g_musicApp.chosenPlaylist.c_str()))
-                        songDirs.push_back(dir);
  
-                    if (songDirs.empty())
+                    if (shuffleAll)
+                    {
+                        // Gather songs from every playlist, tagging each with its
+                        // playlist display name so the now-playing screen can show it.
+                        // (skip sentinel at index 0)
+                        for (int pi = 1; pi < (int)g_musicApp.playlists.size(); pi++)
+                        {
+                            const String& pl = g_musicApp.playlists[pi];
+                            const char* plRaw = pl.c_str();
+                            const char* plDisp = strrchr( plRaw, '/' );
+                            plDisp = plDisp ? plDisp + 1 : plRaw;
+                            for (const auto& dir : listSubDirs(plRaw))
+                                g_musicApp.playlistSongs.push_back({dir, String(plDisp)});
+                        }
+                        // Shuffle the assembled list in-place
+                        for (int i = (int)g_musicApp.playlistSongs.size() - 1; i > 0; i--)
+                        {
+                            int j = esp_random() % (i + 1);
+                            std::swap(g_musicApp.playlistSongs[i], g_musicApp.playlistSongs[j]);
+                        }
+                        Serial.printf("[musicApp] Shuffle All: collected %d songs\n",
+                                      (int)g_musicApp.playlistSongs.size());
+                    }
+                    else
+                    {
+                        for (const auto& dir : listSubDirs(g_musicApp.chosenPlaylist.c_str()))
+                            songDirs.push_back(dir);
+                    }
+ 
+                    if (shuffleAll ? g_musicApp.playlistSongs.empty() : songDirs.empty())
                     {
                         Serial.println("[musicApp] Playlist is empty, rescanning");
                         g_musicApp.menuState = MENU_SCANNING;
                     }
                     else
                     {
-                        shuffleVector(songDirs);
-                        for (const auto& d : songDirs)
-                            g_musicApp.playlistSongs.push_back({d});
+                        if (!shuffleAll)
+                        {
+                            shuffleVector(songDirs);
+                            for (const auto& d : songDirs)
+                                g_musicApp.playlistSongs.push_back({d});
+                        }
  
                         Serial.printf("[musicApp] Shuffled %d songs\n",
                                       g_musicApp.playlistSongs.size());
@@ -777,10 +824,10 @@ AppCmd RadioApp::update()
     else if (g_musicApp.state == MUSIC_PLAYING)
     {
         // ── Playback State ───────────────────────────────────────────────────
-        // Any button press triggers a return to the playlist menu
-        if (btn != InputEvent::NONE)
+        // Only BTN_A returns to the playlist menu
+        if (btn == InputEvent::BTN_A)
         {
-            Serial.println("[musicApp] Button press -> returning to menu");
+            Serial.println("[musicApp] BTN_A -> returning to menu");
             backRequested = true;
         }
  
@@ -846,9 +893,30 @@ AppCmd RadioApp::update()
             }
             else
             {
-                Serial.println("[musicApp] Playlist finished");
-                g_musicApp.state     = MUSIC_SELECTING_PLAYLIST;
-                g_musicApp.menuState = MENU_SCANNING;
+                // Reshuffle and loop rather than returning to the menu
+                Serial.println("[musicApp] Playlist finished - reshuffling");
+                bool isShuffleAll = (g_musicApp.chosenPlaylist == SHUFFLE_ALL_LABEL);
+                if (isShuffleAll)
+                {
+                    // Re-shuffle the existing tagged list in-place
+                    for (int i = (int)g_musicApp.playlistSongs.size() - 1; i > 0; i--)
+                    {
+                        int j = esp_random() % (i + 1);
+                        std::swap(g_musicApp.playlistSongs[i], g_musicApp.playlistSongs[j]);
+                    }
+                }
+                else
+                {
+                    // Rebuild and re-shuffle the song list for a normal playlist
+                    std::vector<String> songDirs;
+                    for (const auto& dir : listSubDirs(g_musicApp.chosenPlaylist.c_str()))
+                        songDirs.push_back(dir);
+                    shuffleVector(songDirs);
+                    g_musicApp.playlistSongs.clear();
+                    for (const auto& d : songDirs)
+                        g_musicApp.playlistSongs.push_back({d});
+                }
+                g_musicApp.songIndex = 0;
                 g_musicApp.dirty     = true;
             }
         }
@@ -895,7 +963,25 @@ void RadioApp::draw()
                                                 &thumb, &hasThumb );
         if (active)
         {
-            drawNowPlaying( p, artist, song, album, thumb, hasThumb );
+            // Derive display name for the current playlist.
+            // In Shuffle All mode each entry stores its source playlist at index [1];
+            // use that so the now-playing screen shows the song's actual playlist.
+            String plNameStr;
+            int currentSongIdx = g_musicApp.songIndex - 1;
+            if (g_musicApp.chosenPlaylist == SHUFFLE_ALL_LABEL &&
+                currentSongIdx >= 0 &&
+                currentSongIdx < (int)g_musicApp.playlistSongs.size() &&
+                g_musicApp.playlistSongs[currentSongIdx].size() >= 2)
+            {
+                plNameStr = g_musicApp.playlistSongs[currentSongIdx][1];
+            }
+            else
+            {
+                const char* plRaw = g_musicApp.chosenPlaylist.c_str();
+                const char* p2 = strrchr( plRaw, '/' );
+                plNameStr = String( p2 ? p2 + 1 : plRaw );
+            }
+            drawNowPlaying( p, artist, song, album, plNameStr.c_str(), thumb, hasThumb );
         }
         else
         {
