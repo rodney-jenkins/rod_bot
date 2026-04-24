@@ -16,7 +16,7 @@
 #include "core/ui.h"
 #include "config.h"
 #include "apps/radio_app.h"
- 
+#include <Fonts/TomThumb.h>
  
 /*--- CONSTANTS ---------------------------------------------------------------------------------*/
  
@@ -349,7 +349,8 @@ bool musicPlayerGetNowPlaying(char* artistOut, size_t artistLen,
                               char* albumOut,  size_t albumLen,
                               char* songOut,   size_t songLen,
                               const uint16_t** thumbOut, bool* hasThumb,
-                              int* playingSongIdxOut) {
+                              int* playingSongIdxOut,
+                              uint8_t* idOut) {
     if (!metaMutex) return false;
     xSemaphoreTake(metaMutex, portMAX_DELAY);
     bool active = nowPlaying.active;
@@ -360,6 +361,7 @@ bool musicPlayerGetNowPlaying(char* artistOut, size_t artistLen,
         if (thumbOut)          *thumbOut          = nowPlaying.thumbnail;
         if (hasThumb)          *hasThumb          = nowPlaying.hasThumb;
         if (playingSongIdxOut) *playingSongIdxOut = g_musicApp.playingSongIdx;
+        if (idOut)             *idOut             = nowPlaying.id;
     }
     xSemaphoreGive(metaMutex);
     return active;
@@ -426,40 +428,28 @@ static void drawNowPlaying( MatrixPanel_I2S_DMA* matrix,
                             const char* album,
                             const char* playlist,
                             const uint16_t* thumb,
-                            bool hasThumb )
+                            bool hasThumb,
+                            uint8_t id )
 {
     matrix->clearScreen();
-    matrix->setFont( nullptr );
+    matrix->setFont( &TomThumb );
     matrix->setTextSize( 1 );
     matrix->setTextColor( COLOR_TEXT );
  
-    if ( hasThumb && thumb )
-    {
-        // Blit 50×50 RGB565 thumbnail into the left portion of the panel
-        for ( int row = 0; row < THUMB_H; row++ )
+    // Full-width text layout when no thumbnail is available
+    matrix->setCursor( 2, 2 );  matrix->print( song );
+    matrix->setCursor( 2, 12 ); matrix->print( artist );
+    matrix->setCursor( 2, 22 ); matrix->print( album );
+    matrix->setCursor( 2, 32 );
+    matrix->setTextColor( COLOR_UI_ACCENT );
+    if( id == 0 )
         {
-            for ( int col = 0; col < THUMB_W; col++ )
-            {
-                matrix->drawPixel( col, row, thumb[ row * THUMB_W + col ] );
-            }
+        matrix->print( "Rod" );
         }
-        // Place text to the right of the thumbnail
-        const int TX = THUMB_W + 2;
-        matrix->setCursor( TX, 2 );  matrix->print( song );
-        matrix->setCursor( TX, 12 ); matrix->print( artist );
-        matrix->setCursor( TX, 22 ); matrix->print( album );
-        matrix->setTextColor( COLOR_UI_ACCENT );
-        matrix->setCursor( TX, 32 ); matrix->print( playlist );
-    }
     else
-    {
-        // Full-width text layout when no thumbnail is available
-        matrix->setCursor( 2, 2 );  matrix->print( song );
-        matrix->setCursor( 2, 12 ); matrix->print( artist );
-        matrix->setCursor( 2, 22 ); matrix->print( album );
-        matrix->setTextColor( COLOR_UI_ACCENT );
-        matrix->setCursor( 2, 32 ); matrix->print( playlist );
-    }
+        {
+        matrix->print( "Rod" );  
+        }
 }
  
  
@@ -978,12 +968,14 @@ void RadioApp::draw()
         bool hasThumb = false;
         const uint16_t* thumb = nullptr;
         int currentSongIdx = -1;
+        uint8_t id = 0;
 
         bool active = musicPlayerGetNowPlaying( artist, sizeof(artist),
                                                 album,  sizeof(album),
                                                 song,   sizeof(song),
                                                 &thumb, &hasThumb,
-                                                &currentSongIdx );
+                                                &currentSongIdx,
+                                                &id );
         if (active)
         {
             // Derive display name for the current playlist.
@@ -1003,7 +995,7 @@ void RadioApp::draw()
                 const char* p2 = strrchr( plRaw, '/' );
                 plNameStr = String( p2 ? p2 + 1 : plRaw );
             }
-            drawNowPlaying( p, artist, song, album, plNameStr.c_str(), thumb, hasThumb );
+            drawNowPlaying( p, artist, song, album, plNameStr.c_str(), thumb, hasThumb, id );
         }
         else
         {
