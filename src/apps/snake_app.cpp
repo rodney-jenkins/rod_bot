@@ -196,7 +196,7 @@ void SnakeApp::_draw_game_over()
     mx->print( _score );
 
     mx->setCursor( 35, 42 );
-    mx->print( "D:Retry  A:Menu" );
+    mx->print( "Enter: Retry" );
 }
 
 
