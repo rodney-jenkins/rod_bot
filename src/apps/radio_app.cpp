@@ -1057,3 +1057,10 @@ void RadioApp::onExit()
  
     Serial.println("[musicApp] Stopped");
 }
+
+// Download with:
+// yt-dlp -x --audio-format mp3 "Youtube URL"
+// Convert mp3 with:
+// ffmpeg -i song.mp3 -acodec pcm_s16le -ar 44100 -ac 2 song.wav
+// For batch conversion:
+// for f in *.mp3; do ffmpeg -i "$f" -acodec pcm_s16le -ar 44100 -ac 2 "${f%.mp3}.wav"; done
