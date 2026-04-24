@@ -4,7 +4,7 @@
 
 #include <Arduino.h>
 #include <driver/i2s.h>
-#include <SD.h>
+#include <SD_MMC.h>
 #include "config.h"
 
 #include "core/app_manager.h"
@@ -105,9 +105,9 @@ static void radio_task( void *param )
     Serial.printf( "[radio] Task started, playing: %s\n", song_path );
 
     // Open the file from SD card
-    File audioFile = SD.open( song_path, FILE_READ );
+    File audioFile = SD_MMC.open( song_path, FILE_READ );
     
-    if( !audioFile || !audioFile.isFile() )
+    if( !audioFile )
     {
         Serial.printf( "[radio] Failed to open file: %s\n", song_path );
         free( song_path );
@@ -392,7 +392,7 @@ void RadioApp::scan_playlists()
     _playlists.clear();
 
     // Open /music directory on SD card
-    File musicDir = SD.open( "/music" );
+    File musicDir = SD_MMC.open( "/music" );
     
     if( !musicDir || !musicDir.isDirectory() )
     {
@@ -441,7 +441,7 @@ void RadioApp::load_and_play_playlist( const std::string &playlist_path )
     _current_song_index = 0;
 
     // Open the playlist directory
-    File playlistDir = SD.open( playlist_path.c_str() );
+    File playlistDir = SD_MMC.open( playlist_path.c_str() );
     
     if( !playlistDir || !playlistDir.isDirectory() )
     {
@@ -540,7 +540,7 @@ void RadioApp::load_song_meta( const std::string &song_path )
     meta_path += ".meta";
 
     // Read .meta file
-    File meta_file = SD.open( meta_path.c_str(), FILE_READ );
+    File meta_file = SD_MMC.open( meta_path.c_str(), FILE_READ );
     if( !meta_file )
     {
         Serial.printf( "[radio] No meta file: %s\n", meta_path.c_str() );
@@ -590,7 +590,7 @@ void RadioApp::load_song_meta( const std::string &song_path )
         }
         art_path += _current_meta.art_filename;
 
-        File art_file = SD.open( art_path.c_str(), FILE_READ );
+        File art_file = SD_MMC.open( art_path.c_str(), FILE_READ );
         size_t expected = ART_SIZE * ART_SIZE * sizeof(uint16_t);
 
         if( art_file && art_file.size() >= expected )

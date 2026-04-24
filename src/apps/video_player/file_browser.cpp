@@ -54,7 +54,8 @@ void FileBrowser::scan_sd()
         std::string name = entry.name();
 
         // Skip system/hidden entries
-        if( name == "System Volume Information" || name == "$RECYCLE.BIN" || name == "._" || name[0] == '.')   // hidden files like .DS_Store            || name == "music" )  // reserved for radio app        {
+        if( name == "System Volume Information" || name == "$RECYCLE.BIN" || name == "._" || name[0] == '.' || name == "music" )
+        {
             entry.close();
             continue;
         }
