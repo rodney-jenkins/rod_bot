@@ -94,6 +94,7 @@ struct SongQueueItem {
     char      song[META_STR_LEN];
     uint16_t* thumbnail;   // PSRAM-allocated, or NULL
     bool      hasThumb;
+    int       playlistIdx; // index into playlistSongs for the song being played
 };
  
 // "Now playing" snapshot, readable from any task under metaMutex
@@ -161,6 +162,7 @@ struct MusicAppContext {
     std::vector<std::vector<String>> playlistSongs;
     int                              cursor;
     int                              songIndex;
+    int                              playingSongIdx; // index of the song currently playing
     uint32_t                         retryTimer;
     String                           chosenPlaylist;
  
@@ -173,7 +175,7 @@ struct MusicAppContext {
     bool    isRunning;
  
     MusicAppContext() : state(MUSIC_SELECTING_PLAYLIST), menuState(MENU_SCANNING),
-                        cursor(0), songIndex(0), retryTimer(0),
+                        cursor(0), songIndex(0), playingSongIdx(-1), retryTimer(0),
                         dirty(true), isRunning(false) {}
 };
  
@@ -524,6 +526,9 @@ static void audioTask(void* /*param*/) {
         nowPlaying.active    = true;
         item.thumbnail = nullptr;
         xSemaphoreGive(metaMutex);
+
+        // Track which playlistSongs entry is now playing so draw() can look up the playlist name
+        g_musicApp.playingSongIdx = item.playlistIdx;
  
         // Signal the main task that metadata changed so draw() repaints
         g_musicApp.dirty = true;
@@ -849,8 +854,9 @@ AppCmd RadioApp::update()
                 strlcpy(item.artist, meta.artist.c_str(), META_STR_LEN);
                 strlcpy(item.album,  meta.album.c_str(),  META_STR_LEN);
                 strlcpy(item.song,   meta.song.c_str(),   META_STR_LEN);
-                item.thumbnail = meta.thumbnail;
-                item.hasThumb  = meta.hasThumb;
+                item.thumbnail  = meta.thumbnail;
+                item.hasThumb   = meta.hasThumb;
+                item.playlistIdx = g_musicApp.songIndex - 1;  // index of this song in playlistSongs
                 meta.thumbnail = nullptr;  // transfer ownership to queue
  
                 if (xQueueSend(songQueue, &item, 0) != pdTRUE)
@@ -967,7 +973,7 @@ void RadioApp::draw()
             // In Shuffle All mode each entry stores its source playlist at index [1];
             // use that so the now-playing screen shows the song's actual playlist.
             String plNameStr;
-            int currentSongIdx = g_musicApp.songIndex - 1;
+            int currentSongIdx = g_musicApp.playingSongIdx;
             if (g_musicApp.chosenPlaylist == SHUFFLE_ALL_LABEL &&
                 currentSongIdx >= 0 &&
                 currentSongIdx < (int)g_musicApp.playlistSongs.size() &&
@@ -1045,6 +1051,7 @@ void RadioApp::onExit()
     if (ringBuf.data) { free(ringBuf.data); ringBuf.data = nullptr; }
  
     g_musicApp.isRunning = false;
+    g_musicApp.playingSongIdx = -1;
     g_musicApp.playlists.clear();
     g_musicApp.playlistSongs.clear();
  
