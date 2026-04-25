@@ -15,9 +15,11 @@
 #include "apps/video_player/video_player_app.h"
 #include "apps/snake_app.h"
 
-#include "img/fes0.h"
-#include "img/buck0.h"
+#include "img/movie.h"
+#include "img/frame.h"
 #include "img/rod0.h"
+#include "img/fes1.h"
+
 
 #include <Fonts/TomThumb.h>
 
@@ -98,19 +100,22 @@ void MenuApp::draw_menu( MatrixPanel_I2S_DMA * matrix )
 
 void MenuApp::draw_pic( MatrixPanel_I2S_DMA * matrix )
 {
-    switch( _pic )
+    switch( _selected )
     {
-        case( 0 ): // FES0
-            draw_png( matrix, UI_ROD0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
-            // draw_png( matrix, UI_FES0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+        case( 0 ): // movie
+            draw_png( matrix, UI_MOVIE, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
             break;
-        
-        case( 1 ): // BUCK0
-            draw_png( matrix, UI_ROD0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
-            // draw_png( matrix, UI_BUCK0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+
+        case( 1 ): // frame
+            draw_png( matrix, UI_FRAME, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
             break;
-        
-        default:
+
+        case( 2 ): // music
+            draw_png( matrix, UI_ROD0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+            break;
+
+        case( 3 ): // snake
+            draw_png( matrix, UI_FES1, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
             break;
     }
 }

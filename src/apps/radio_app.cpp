@@ -17,7 +17,18 @@
 #include "config.h"
 #include "apps/radio_app.h"
 #include <Fonts/TomThumb.h>
- 
+#include "apps/menu_app.h" 
+
+#include "img/buck0.h"
+#include "img/rod0.h"
+#include "img/fes0.h"
+#include "img/power_bottoms.h"
+#include "img/chad0.h"
+#include "img/grace0.h"
+#include "img/jake0.h"
+#include "img/jay0.h"
+#include "img/josh0.h"
+
 /*--- CONSTANTS ---------------------------------------------------------------------------------*/
  
 enum AppState {
@@ -380,44 +391,73 @@ static void drawPlaylistMenu( MatrixPanel_I2S_DMA* matrix,
     matrix->setFont( nullptr );
     matrix->setTextSize( 1 );
  
-    // Layout constants — tune to your panel size
-    const int FIRST_X  = 2;
-    const int FIRST_Y  = 2;
-    const int BTN_W    = 58;
-    const int BTN_H    = 9;
-    const int Y_STRIDE = BTN_H + 2;
-    const int MAX_ROWS = 5;  // max visible entries
- 
-    int count = min( (int)playlists.size(), MAX_ROWS );
- 
-    for ( int i = 0; i < count; i++ )
+    int count = (int)playlists.size();
+    int x, y;
+
+    // draw boxes
+    for( int i = 0; i < count; i++ )
     {
-        int x = FIRST_X;
-        int y = FIRST_Y + i * Y_STRIDE;
+        x = UI_MENU_FIRST_BUTTON_X + UI_MENU_BUTTON_X_OFFSET * i;
+        y = UI_MENU_FIRST_BUTTON_Y;
+
+        draw_rect_unfilled( matrix, COLOR_UI_ACCENT, x, y, UI_MENU_BUTTON_WIDTH, UI_MENU_BUTTON_HEIGHT );
+    }
+
+    // draw selected
+    x = UI_MENU_FIRST_BUTTON_X + 1 + cursor * UI_MENU_BUTTON_X_OFFSET;
+    y = UI_MENU_FIRST_BUTTON_Y + 1;
+    draw_rect( matrix, COLOR_UI_MAIN, x, y, UI_MENU_BUTTON_WIDTH - 2, UI_MENU_BUTTON_HEIGHT - 2 );
+
+    const char* raw  = playlists[cursor].c_str();
+    const char* name;
+    bool isShuffleAll = (playlists[cursor] == SHUFFLE_ALL_LABEL);
+    if (isShuffleAll) {
+        name = "Power Bottoms";
+    } else {
+        name = strrchr( raw, '/' );
+        name = name ? name + 1 : raw;
+    }
  
-        // Strip leading path component for display; handle Shuffle All sentinel
-        const char* raw  = playlists[i].c_str();
-        const char* name;
-        bool isShuffleAll = (playlists[i] == SHUFFLE_ALL_LABEL);
-        if (isShuffleAll) {
-            name = "Shuffle All";
-        } else {
-            name = strrchr( raw, '/' );
-            name = name ? name + 1 : raw;
-        }
- 
-        // Background fill + border
-        draw_rect( matrix, COLOR_UI_MAIN, x, y, BTN_W, BTN_H );
-        draw_rect_unfilled( matrix, COLOR_UI_ACCENT, x - 1, y - 1, BTN_W + 2, BTN_H + 2 );
- 
-        // Highlight selected row with a bright outline
-        if ( i == cursor )
-            draw_rect_unfilled( matrix, COLOR_TEXT, x - 1, y - 1, BTN_W + 2, BTN_H + 2 );
- 
-        // "Shuffle All" uses the accent colour so it stands apart from regular playlists
-        matrix->setTextColor( isShuffleAll ? COLOR_UI_ACCENT : COLOR_TEXT );
-        matrix->setCursor( x + 2, y + 1 );
-        matrix->print( name );
+    // "Shuffle All" uses the accent colour so it stands apart from regular playlists
+    matrix->setTextColor( isShuffleAll ? COLOR_UI_ACCENT : COLOR_TEXT );
+    matrix->setCursor( 2, 12 );
+    matrix->print( name );
+
+    if( cursor == 0 )
+    {
+        draw_png( matrix, UI_PB, 0, 14, PANEL_W, 50 );
+    }
+    else if( cursor == 1 )
+    {
+        draw_png( matrix, UI_FES0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+    }
+    else if( cursor == 2 )
+    {
+        draw_png( matrix, UI_BUCK0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+    }
+    else if( cursor == 3 )
+    {
+        draw_png( matrix, UI_ROD0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+    }
+    else if( cursor == 4 )
+    {
+        draw_png( matrix, UI_JAY0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+    }
+    else if( cursor == 5 )
+    {
+        draw_png( matrix, UI_JAKE0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+    }
+    else if( cursor == 6 )
+    {
+        draw_png( matrix, UI_GRACE0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+    }
+    else if( cursor == 7 )
+    {
+        draw_png( matrix, UI_JOSH0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+    }
+    else if( cursor == 8 )
+    {
+        draw_png( matrix, UI_CHAD0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
     }
 }
  
@@ -436,19 +476,43 @@ static void drawNowPlaying( MatrixPanel_I2S_DMA* matrix,
     matrix->setTextSize( 1 );
     matrix->setTextColor( COLOR_TEXT );
  
+    // 10 apart
     // Full-width text layout when no thumbnail is available
-    matrix->setCursor( 2, 2 );  matrix->print( song );
-    matrix->setCursor( 2, 12 ); matrix->print( artist );
-    matrix->setCursor( 2, 22 ); matrix->print( album );
-    matrix->setCursor( 2, 32 );
-    matrix->setTextColor( COLOR_UI_ACCENT );
+    matrix->setCursor( 2, 52 ); matrix->print( song );
+    matrix->setCursor( 2, 62 ); matrix->print( artist );
+
+    // ROD0 CHAD1 FES2 BUCKET3 JAY4 JAKE5 GRACE6 JOSH7
     if( id == 0 )
         {
-        matrix->print( "Rod" );
+        draw_png( matrix, UI_ROD0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
         }
-    else
+    else if( id == 1 )
         {
-        matrix->print( "Rod" );  
+        draw_png( matrix, UI_CHAD0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+        }
+    else if( id == 2 )
+        {
+        draw_png( matrix, UI_FES0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+        }
+    else if( id == 3 )
+        {
+        draw_png( matrix, UI_BUCK0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+        }
+    else if( id == 4 )
+        {
+        draw_png( matrix, UI_JAY0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+        }
+    else if( id == 5 )
+        {
+        draw_png( matrix, UI_JAKE0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+        }
+    else if( id == 6 )
+        {
+        draw_png( matrix, UI_GRACE0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
+        }
+    else if( id == 7 )
+        {
+        draw_png( matrix, UI_JOSH0, UI_MENU_PIC_X, UI_MENU_PIC_Y, UI_MENU_PIC_WIDTH, UI_MENU_PIC_HEIGHT );
         }
 }
  

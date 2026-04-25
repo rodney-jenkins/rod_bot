@@ -11,8 +11,8 @@
 
 
 // Internet
-constexpr const char *SSID = "Slow_Internet";
-constexpr const char *PASSWORD = "YouGotMail911";
+constexpr const char *SSID = "FesBuck House";
+constexpr const char *PASSWORD = "FesBuck412";
 
 // Commands
 constexpr const char *SRVR_IMAGE_CMD           = "http://192.168.86.21:5000/image";
